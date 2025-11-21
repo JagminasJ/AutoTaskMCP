@@ -188,10 +188,9 @@ export function registerTools(server: McpServer) {
         // Step 2: Query tickets by company ID with automatic date filtering and sorting
         const ticketsUrl = `https://webservices15.autotask.net/ATServicesRest/V1.0/Tickets/query`
         // Fetch MANY more records than requested to ensure we get the most recent ones
-        // The API might return tickets in ASC order (oldest first) or not respect sort,
-        // so we fetch a large sample, sort client-side, then take top N
-        // Fetch at least 500 tickets to ensure we get recent ones even if API returns oldest-first
-        const fetchSize = Math.max((input.maxRecords || 5) * 100, 500)
+        // Try server-side sorting first, but also sort client-side as fallback
+        // Fetch at least 1000 tickets to ensure we get recent ones even if API doesn't sort correctly
+        const fetchSize = Math.max((input.maxRecords || 5) * 200, 1000)
         const ticketBody: any = {
           filter: [{ field: 'companyID', op: 'eq', value: companyIdNum }], // Use number, not string
           maxRecords: fetchSize, // Fetch many more to ensure we get recent tickets
@@ -204,10 +203,12 @@ export function registerTools(server: McpServer) {
         const daysToFilter = input.daysAgo
         console.log(`[getTicketsByCompanyName] No server-side date filter (will filter client-side). daysAgo: ${daysToFilter}`)
         
-        // DON'T rely on server-side sort - the API might not respect it or might return ASC
-        // We'll fetch a large sample and sort client-side to ensure correct order
-        // Remove sort from request to avoid API potentially returning in wrong order
-        console.log(`[getTicketsByCompanyName] No server-side sort (will sort client-side by createDate DESC)`)
+        // Try server-side sorting by createDate DESC - the Autotask API should support this
+        // We'll also sort client-side as a fallback to ensure correct order
+        if (input.sortByDate !== false) {
+          ticketBody.sort = [{ field: 'createDate', direction: 'DESC' }]
+          console.log(`[getTicketsByCompanyName] Server-side sort: createDate DESC (will also sort client-side as fallback)`)
+        }
         
         // DON'T use enforceMaxRecords here - we need to fetch many tickets (500+) to ensure we get recent ones
         // even if the API returns them in ASC order (oldest first)
