@@ -42,8 +42,8 @@ RUN npm ci --only=production && npm cache clean --force
 # Copy built files from builder stage
 COPY --from=builder /app/dist ./dist
 
-# Create non-root user for security
-RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app
+# Create non-root user for security (use UID 1001 to avoid conflicts)
+RUN useradd -m -u 1001 appuser && chown -R appuser:appuser /app
 USER appuser
 
 # Expose the port the app runs on
