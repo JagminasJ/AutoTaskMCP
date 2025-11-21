@@ -209,7 +209,10 @@ export function registerTools(server: McpServer) {
         // Remove sort from request to avoid API potentially returning in wrong order
         console.log(`[getTicketsByCompanyName] No server-side sort (will sort client-side by lastActivityDate DESC)`)
         
-        const optimizedBody = enforceMaxRecords(ticketBody)
+        // DON'T use enforceMaxRecords here - we need to fetch many tickets (500+) to ensure we get recent ones
+        // even if the API returns them in ASC order (oldest first)
+        // enforceMaxRecords would cap us at 100, which isn't enough
+        const optimizedBody = ticketBody
         
         console.log(`[getTicketsByCompanyName] Querying tickets for company ${companyId} with body:`, JSON.stringify(optimizedBody, null, 2))
         
