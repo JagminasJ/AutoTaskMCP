@@ -1,7 +1,7 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
-import { callApi } from './postman'
-import { getAutotaskHeaders } from './config'
+import { callApi } from './postman.js'
+import { getAutotaskHeaders } from './config.js'
 
 export function registerTools(server: McpServer) {
   server.tool(
@@ -31,7 +31,7 @@ export function registerTools(server: McpServer) {
   server.tool(
     'ticketCategoriesQueryCount',
     `Generated from Postman`,
-    { body: z.object() },
+    { body: z.any() },
     async (input, extra) => {
       try {
         const baseUrl = `https://webservices15.autotask.net/ATServicesRest/V1.0/TicketCategories/query/count`
@@ -79,7 +79,7 @@ export function registerTools(server: McpServer) {
   server.tool(
     'ticketCategoriesQuery',
     `Generated from Postman`,
-    { body: z.object() },
+    { body: z.any() },
     async (input, extra) => {
       try {
         const baseUrl = `https://webservices15.autotask.net/ATServicesRest/V1.0/TicketCategories/query`
@@ -310,7 +310,7 @@ export function registerTools(server: McpServer) {
   server.tool(
     'ticketCategoriesUpdateEntity',
     `Generated from Postman`,
-    { body: z.object() },
+    { body: z.any() },
     async (input, extra) => {
       try {
         const baseUrl = `https://webservices15.autotask.net/ATServicesRest/V1.0/TicketCategories`
@@ -334,7 +334,7 @@ export function registerTools(server: McpServer) {
   server.tool(
     'ticketCategoriesPatchEntity',
     `Generated from Postman`,
-    { body: z.object() },
+    { body: z.any() },
     async (input, extra) => {
       try {
         const baseUrl = `https://webservices15.autotask.net/ATServicesRest/V1.0/TicketCategories`
@@ -382,7 +382,7 @@ export function registerTools(server: McpServer) {
   server.tool(
     'ticketCategoryFieldDefaultsQueryCount',
     `Generated from Postman`,
-    { body: z.object() },
+    { body: z.any() },
     async (input, extra) => {
       try {
         const baseUrl = `https://webservices15.autotask.net/ATServicesRest/V1.0/TicketCategoryFieldDefaults/query/count`
@@ -430,7 +430,7 @@ export function registerTools(server: McpServer) {
   server.tool(
     'ticketCategoryFieldDefaultsQuery',
     `Generated from Postman`,
-    { body: z.object() },
+    { body: z.any() },
     async (input, extra) => {
       try {
         const baseUrl = `https://webservices15.autotask.net/ATServicesRest/V1.0/TicketCategoryFieldDefaults/query`
@@ -570,7 +570,7 @@ export function registerTools(server: McpServer) {
   server.tool(
     'ticketHistoryQueryCount',
     `Generated from Postman`,
-    { body: z.object() },
+    { body: z.any() },
     async (input, extra) => {
       try {
         const baseUrl = `https://webservices15.autotask.net/ATServicesRest/V1.0/TicketHistory/query/count`
@@ -618,7 +618,7 @@ export function registerTools(server: McpServer) {
   server.tool(
     'ticketHistoryQuery',
     `Generated from Postman`,
-    { body: z.object() },
+    { body: z.any() },
     async (input, extra) => {
       try {
         const baseUrl = `https://webservices15.autotask.net/ATServicesRest/V1.0/TicketHistory/query`
@@ -804,7 +804,7 @@ export function registerTools(server: McpServer) {
   server.tool(
     'ticketNoteAttachmentsQueryCount',
     `Generated from Postman`,
-    { body: z.object() },
+    { body: z.any() },
     async (input, extra) => {
       try {
         const baseUrl = `https://webservices15.autotask.net/ATServicesRest/V1.0/TicketNoteAttachments/query/count`
@@ -852,7 +852,7 @@ export function registerTools(server: McpServer) {
   server.tool(
     'ticketNoteAttachmentsQuery',
     `Generated from Postman`,
-    { body: z.object() },
+    { body: z.any() },
     async (input, extra) => {
       try {
         const baseUrl = `https://webservices15.autotask.net/ATServicesRest/V1.0/TicketNoteAttachments/query`
@@ -968,7 +968,7 @@ export function registerTools(server: McpServer) {
   server.tool(
     'ticketNoteAttachmentsChildCreateEntity',
     `Generated from Postman`,
-    { parentId: z.string(), body: z.object() },
+    { parentId: z.string(), body: z.any() },
     async (input, extra) => {
       try {
         const baseUrl = `https://webservices15.autotask.net/ATServicesRest/V1.0/TicketNotes/${input.parentId}/Attachments`
@@ -1016,7 +1016,7 @@ export function registerTools(server: McpServer) {
   server.tool(
     'ticketNotesQueryCount',
     `Generated from Postman`,
-    { body: z.object() },
+    { body: z.any() },
     async (input, extra) => {
       try {
         const baseUrl = `https://webservices15.autotask.net/ATServicesRest/V1.0/TicketNotes/query/count`
@@ -1064,7 +1064,7 @@ export function registerTools(server: McpServer) {
   server.tool(
     'ticketNotesQuery',
     `Generated from Postman`,
-    { body: z.object() },
+    { body: z.any() },
     async (input, extra) => {
       try {
         const baseUrl = `https://webservices15.autotask.net/ATServicesRest/V1.0/TicketNotes/query`
@@ -1295,7 +1295,7 @@ export function registerTools(server: McpServer) {
   server.tool(
     'ticketNotesChildCreateEntity',
     `Generated from Postman`,
-    { parentId: z.string(), body: z.object() },
+    { parentId: z.string(), body: z.any() },
     async (input, extra) => {
       try {
         const baseUrl = `https://webservices15.autotask.net/ATServicesRest/V1.0/Tickets/${input.parentId}/Notes`
@@ -1319,7 +1319,7 @@ export function registerTools(server: McpServer) {
   server.tool(
     'ticketNotesChildUpdateEntity',
     `Generated from Postman`,
-    { parentId: z.string(), body: z.object() },
+    { parentId: z.string(), body: z.any() },
     async (input, extra) => {
       try {
         const baseUrl = `https://webservices15.autotask.net/ATServicesRest/V1.0/Tickets/${input.parentId}/Notes`
@@ -1343,7 +1343,7 @@ export function registerTools(server: McpServer) {
   server.tool(
     'ticketNotesChildPatchEntity',
     `Generated from Postman`,
-    { parentId: z.string(), body: z.object() },
+    { parentId: z.string(), body: z.any() },
     async (input, extra) => {
       try {
         const baseUrl = `https://webservices15.autotask.net/ATServicesRest/V1.0/Tickets/${input.parentId}/Notes`
@@ -1505,7 +1505,7 @@ export function registerTools(server: McpServer) {
   server.tool(
     'ticketSecondaryResourcesChildCreateEntity',
     `Generated from Postman`,
-    { parentId: z.string(), body: z.object() },
+    { parentId: z.string(), body: z.any() },
     async (input, extra) => {
       try {
         const baseUrl = `https://webservices15.autotask.net/ATServicesRest/V1.0/Tickets/${input.parentId}/SecondaryResources`
@@ -1553,7 +1553,7 @@ export function registerTools(server: McpServer) {
   server.tool(
     'ticketsQueryCount',
     `Generated from Postman`,
-    { body: z.object() },
+    { body: z.any() },
     async (input, extra) => {
       try {
         const baseUrl = `https://webservices15.autotask.net/ATServicesRest/V1.0/Tickets/query/count`
@@ -1601,7 +1601,7 @@ export function registerTools(server: McpServer) {
   server.tool(
     'ticketsQuery',
     `Generated from Postman`,
-    { body: z.object() },
+    { body: z.any() },
     async (input, extra) => {
       try {
         const baseUrl = `https://webservices15.autotask.net/ATServicesRest/V1.0/Tickets/query`
@@ -1717,7 +1717,7 @@ export function registerTools(server: McpServer) {
   server.tool(
     'ticketsCreateEntity',
     `Generated from Postman`,
-    { body: z.object() },
+    { body: z.any() },
     async (input, extra) => {
       try {
         const baseUrl = `https://webservices15.autotask.net/ATServicesRest/V1.0/Tickets`
@@ -1741,7 +1741,7 @@ export function registerTools(server: McpServer) {
   server.tool(
     'ticketsUpdateEntity',
     `Generated from Postman`,
-    { body: z.object() },
+    { body: z.any() },
     async (input, extra) => {
       try {
         const baseUrl = `https://webservices15.autotask.net/ATServicesRest/V1.0/Tickets`
@@ -1765,7 +1765,7 @@ export function registerTools(server: McpServer) {
   server.tool(
     'ticketsPatchEntity',
     `Generated from Postman`,
-    { body: z.object() },
+    { body: z.any() },
     async (input, extra) => {
       try {
         const baseUrl = `https://webservices15.autotask.net/ATServicesRest/V1.0/Tickets`
@@ -1813,7 +1813,7 @@ export function registerTools(server: McpServer) {
   server.tool(
     'ticketSecondaryResourcesQueryCount',
     `Generated from Postman`,
-    { body: z.object() },
+    { body: z.any() },
     async (input, extra) => {
       try {
         const baseUrl = `https://webservices15.autotask.net/ATServicesRest/V1.0/TicketSecondaryResources/query/count`
@@ -1861,7 +1861,7 @@ export function registerTools(server: McpServer) {
   server.tool(
     'ticketSecondaryResourcesQuery',
     `Generated from Postman`,
-    { body: z.object() },
+    { body: z.any() },
     async (input, extra) => {
       try {
         const baseUrl = `https://webservices15.autotask.net/ATServicesRest/V1.0/TicketSecondaryResources/query`

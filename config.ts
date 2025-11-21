@@ -12,7 +12,7 @@ export const autotaskConfig = {
 /**
  * Get Autotask API headers for requests
  */
-export function getAutotaskHeaders(additionalHeaders: Record<string, string> = {}) {
+export function getAutotaskHeaders(additionalHeaders: Record<string, string> = {}): Record<string, string> {
   return {
     ApiIntegrationCode: autotaskConfig.apiIntegrationCode,
     UserName: autotaskConfig.userName,

@@ -2,7 +2,7 @@ import express, { Request, Response } from 'express'
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js'
 import { isInitializeRequest } from '@modelcontextprotocol/sdk/types.js'
 import { randomUUID } from 'node:crypto'
-import { getServer } from './server.ts'
+import { getServer } from './server.js'
 
 const app = express()
 app.use(express.json())
