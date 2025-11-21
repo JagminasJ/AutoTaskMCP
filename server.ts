@@ -1,6 +1,7 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
 import { registerTools } from './tools.js'
+import { registerResources } from './resources.js'
 
 export const getServer = () => {
   const server = new McpServer({
@@ -9,6 +10,7 @@ export const getServer = () => {
   })
 
   registerTools(server)
+  registerResources(server)
 
   return server
 }
