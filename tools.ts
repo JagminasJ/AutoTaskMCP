@@ -505,7 +505,7 @@ export function registerTools(server: McpServer) {
         }
         
         // Apply truncateResponse to ensure we don't exceed size limits
-        const responseText = truncateResponse(responseData, 45000) // Slightly under 50KB to be safe
+        const responseText = truncateResponse(responseData, 40000) // More conservative limit
         
         return {
           content: [
@@ -548,13 +548,15 @@ export function registerTools(server: McpServer) {
   // PRIMARY TOOL - Get tickets by resource name
   server.tool(
     'getTicketsByResourceName',
-    `PRIMARY TOOL for tickets by resource name. Use this when user asks for tickets assigned to a resource by name (e.g., "show me tickets assigned to John Smith", "tickets for Joey Jagminas", "all tickets assigned to resource name"). This tool AUTOMATICALLY handles everything: finds the resource by name, queries tickets by assignedResourceID, applies date filters if specified, and returns ACTUAL TICKET DETAILS. Supports filtering by due date (dueDateTime field). DO NOT use ticketsQueryCount - that returns only a number and cannot filter by resource name. Tickets are filtered by assignedResourceID, not resourceName.`,
+    `PRIMARY TOOL for tickets by resource name. Use this when user asks for tickets assigned to a resource by name (e.g., "show me tickets assigned to John Smith", "tickets for Joey Jagminas", "all tickets assigned to resource name"). This tool AUTOMATICALLY handles everything: finds the resource by name, queries tickets by assignedResourceID, applies date filters if specified, and returns ACTUAL TICKET DETAILS. Supports filtering by due date (dueDateTime field) and status. DO NOT use ticketsQueryCount - that returns only a number and cannot filter by resource name. Tickets are filtered by assignedResourceID, not resourceName.`,
     {
       resourceName: z.string().describe('The name of the resource to search for (e.g., "Joey Jagminas", "John Smith")'),
       maxRecords: z.number().max(100).optional().describe('Number of tickets to return (default: 20, max: 100). The tool automatically sorts by createDate DESC, so this returns the N most recent tickets. Use smaller values (10-20) to avoid response size limits.'),
       sortByDate: z.boolean().optional().describe('Sort by createDate descending (default: true). When true, returns most recently created tickets first.'),
       dueDateBefore: z.string().optional().describe('Optional: Filter tickets with due date before this date (ISO format, e.g., "2025-11-21T00:00:00.000Z" or "2025-11-21"). Use this when user asks for tickets with "due date before X" or "overdue".'),
       dueDateAfter: z.string().optional().describe('Optional: Filter tickets with due date after this date (ISO format, e.g., "2025-01-01T00:00:00.000Z" or "2025-01-01"). Use this when user asks for tickets with "due date after X".'),
+      status: z.number().optional().describe('Optional: Filter tickets by status ID. Common statuses: 1=New, 2=In Progress, 3=Complete, 4=Waiting, 5=Closed. Use this when user asks for "open tickets", "closed tickets", etc.'),
+      excludeStatus: z.array(z.number()).optional().describe('Optional: Exclude tickets with these status IDs. Use [3, 5] to exclude completed and closed tickets (for "open tickets" queries).'),
       daysAgo: z.number().optional().describe('ONLY use when user explicitly mentions a time period (e.g., "last 30 days" = 30, "last month" = 30, "last year" = 365). For "most recent" or "latest" queries without a time period, DO NOT set this parameter - leave it undefined. The tool will return all tickets sorted by date (most recent first) without any date filtering.'),
     },
     async (input, extra) => {
@@ -936,13 +938,37 @@ export function registerTools(server: McpServer) {
           }
         }
         
-        // Truncate large fields in tickets to reduce response size
+        // Extract only essential fields and truncate large fields to reduce response size
+        const essentialFields = [
+          'id', 'ticketNumber', 'title', 'status', 'priority', 'companyID', 'contactID',
+          'createDate', 'dueDateTime', 'lastActivityDate', 'assignedResourceID',
+          'ticketCategory', 'ticketType', 'queueID', 'issueType', 'subIssueType',
+          'completedDate', 'resolvedDateTime', 'firstResponseDateTime'
+        ]
+        
         const truncatedTickets = tickets.map((ticket: any) => {
-          const truncated: any = { ...ticket }
-          // Truncate description field if it's too long (common source of large responses)
-          if (truncated.description && typeof truncated.description === 'string' && truncated.description.length > 500) {
-            truncated.description = truncated.description.substring(0, 500) + '... [truncated]'
+          // Extract only essential fields
+          const truncated: any = {}
+          essentialFields.forEach((field) => {
+            if (ticket[field] !== undefined) {
+              truncated[field] = ticket[field]
+            }
+          })
+          
+          // Add description but truncate aggressively (200 chars max)
+          if (ticket.description && typeof ticket.description === 'string') {
+            if (ticket.description.length > 200) {
+              truncated.description = ticket.description.substring(0, 200) + '... [truncated]'
+            } else {
+              truncated.description = ticket.description
+            }
           }
+          
+          // Add userDefinedFields if they exist (but limit to first 5)
+          if (ticket.userDefinedFields && Array.isArray(ticket.userDefinedFields)) {
+            truncated.userDefinedFields = ticket.userDefinedFields.slice(0, 5)
+          }
+          
           return truncated
         })
         
@@ -966,7 +992,7 @@ export function registerTools(server: McpServer) {
         }
         
         // Apply truncateResponse to ensure we don't exceed size limits
-        const responseText = truncateResponse(responseData, 45000) // Slightly under 50KB to be safe
+        const responseText = truncateResponse(responseData, 40000) // More conservative limit
         
         return {
           content: [
