@@ -7,11 +7,19 @@ export async function callApi(
     Object.entries(params).forEach(([k, v]) => {
       if (v != null) url.searchParams.set(k, String(v))
     })
-  const res = await fetch(url.toString(), {
+  
+  // Only include body for methods that support it (not GET, HEAD, OPTIONS)
+  const fetchOptions: RequestInit = {
     method,
     headers,
-    body: body as any,
-  })
+  }
+  
+  // Only add body for methods that support it
+  if (method !== 'GET' && method !== 'HEAD' && method !== 'OPTIONS' && body) {
+    fetchOptions.body = body as any
+  }
+  
+  const res = await fetch(url.toString(), fetchOptions)
   const text = await res.text()
   if (!res.ok) throw new Error(`HTTP ${res.status}: ${text}`)
   const ct = res.headers.get('content-type') || ''
