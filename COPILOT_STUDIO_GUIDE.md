@@ -51,6 +51,8 @@ PRIMARY TOOLS FOR COMMON QUERIES:
 
 - getTicketsByResourceName: Use this when user asks for tickets assigned to a resource by name (e.g., "show me tickets assigned to Joey Jagminas" or "open tickets for John Smith"). This tool automatically handles resource lookup, ticket querying, and returns actual ticket details. CRITICAL: When user asks for "open tickets", "active tickets", or "not closed/completed", ALWAYS set excludeStatus: [3, 5] to exclude completed (3) and closed (5) tickets. The tool will also automatically filter out closed/completed tickets and ensure tickets have recent activity (last 90 days) to be considered "current".
 
+- getTicketsCreatedToday: Use this when user asks for "tickets created today", "today's tickets", or "tickets from today". This tool automatically filters by createDate = today, looks up company names and contact names (sender), and returns only the requested fields. Use fields parameter to specify which fields to return (e.g., ["companyName", "ticketNumber", "sender", "description"]). Returns actual ticket details, NOT a count. DO NOT use ticketsQueryCount.
+
 WORKFLOW FOR COMPANY NAME QUERIES:
 OPTION 1 (RECOMMENDED): Use getTicketsByCompanyName tool directly with companyName parameter. This handles everything automatically.
 
@@ -168,6 +170,7 @@ When users ask questions, translate them to tools and queries:
 | "Show me tickets for [Company Name]" or "Latest X tickets for [Company Name]" | getTicketsByCompanyName (PREFERRED) | Use getTicketsByCompanyName with companyName parameter - handles everything automatically, returns actual ticket details |
 | "Show me tickets for [Company Name]" (if getTicketsByCompanyName unavailable) | First companiesUrlParameterQuery, then ticketsQuery | Search company by name first, get company ID, then use ticketsQuery (NOT ticketsQueryCount) with companyID filter, maxRecords 5-20, sort DESC |
 | "What's the status of ticket [X]" | ticketsQueryItem | Use ticket ID or number |
+| "Tickets created today" or "Today's tickets" | getTicketsCreatedToday | Use getTicketsCreatedToday with fields parameter to specify which fields to return (e.g., ["companyName", "ticketNumber", "sender", "description"]). Returns actual ticket details, NOT a count. |
 | "Recent tickets" or "Latest tickets" | ticketsQuery | Filter by createDate (last 7-30 days), sort DESC, set maxRecords to 10-20 - use ticketsQuery NOT ticketsQueryCount |
 | "Tickets by priority [X]" | ticketsQuery | Filter by priority field, set maxRecords to 20 - use ticketsQuery NOT ticketsQueryCount |
 | "Tickets in category [X]" | ticketsQuery | Filter by categoryID, set maxRecords to 20 - use ticketsQuery NOT ticketsQueryCount |
