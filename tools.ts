@@ -540,7 +540,7 @@ export function registerTools(server: McpServer) {
     `PRIMARY TOOL for tickets by resource name. Use this when user asks for tickets assigned to a resource by name (e.g., "show me tickets assigned to John Smith", "tickets for Joey Jagminas", "all tickets assigned to resource name"). This tool AUTOMATICALLY handles everything: finds the resource by name, queries tickets by assignedResourceID, applies date filters if specified, and returns ACTUAL TICKET DETAILS. Supports filtering by due date (dueDateTime field). DO NOT use ticketsQueryCount - that returns only a number and cannot filter by resource name. Tickets are filtered by assignedResourceID, not resourceName.`,
     {
       resourceName: z.string().describe('The name of the resource to search for (e.g., "Joey Jagminas", "John Smith")'),
-      maxRecords: z.number().max(500).optional().describe('Number of tickets to return (default: 50, max: 500). The tool automatically sorts by createDate DESC, so this returns the N most recent tickets.'),
+      maxRecords: z.number().max(100).optional().describe('Number of tickets to return (default: 20, max: 100). The tool automatically sorts by createDate DESC, so this returns the N most recent tickets. Use smaller values (10-20) to avoid response size limits.'),
       sortByDate: z.boolean().optional().describe('Sort by createDate descending (default: true). When true, returns most recently created tickets first.'),
       dueDateBefore: z.string().optional().describe('Optional: Filter tickets with due date before this date (ISO format, e.g., "2025-11-21T00:00:00.000Z" or "2025-11-21"). Use this when user asks for tickets with "due date before X" or "overdue".'),
       dueDateAfter: z.string().optional().describe('Optional: Filter tickets with due date after this date (ISO format, e.g., "2025-01-01T00:00:00.000Z" or "2025-01-01"). Use this when user asks for tickets with "due date after X".'),
@@ -919,38 +919,49 @@ export function registerTools(server: McpServer) {
           })
           
           // Take only the requested number of tickets
-          const requestedCount = input.maxRecords || 50
+          const requestedCount = input.maxRecords || 20
           if (tickets.length > requestedCount) {
             tickets = tickets.slice(0, requestedCount)
           }
         }
         
+        // Truncate large fields in tickets to reduce response size
+        const truncatedTickets = tickets.map((ticket: any) => {
+          const truncated: any = { ...ticket }
+          // Truncate description field if it's too long (common source of large responses)
+          if (truncated.description && typeof truncated.description === 'string' && truncated.description.length > 500) {
+            truncated.description = truncated.description.substring(0, 500) + '... [truncated]'
+          }
+          return truncated
+        })
+        
+        const responseData = {
+          resourceName: input.resourceName,
+          resourceID: resourceId,
+          totalTicketsReturned: truncatedTickets.length,
+          maxRecordsRequested: input.maxRecords || 20,
+          sortedBy: input.sortByDate !== false ? 'createDate DESC (most recently created first, client-side sorted)' : 'none',
+          dateFilter: daysToFilter === 0 
+            ? 'No date filter (explicitly requested)' 
+            : daysToFilter !== undefined && daysToFilter > 0 
+              ? `Last ${daysToFilter} days (filtered by createDate)` 
+              : 'Default filter: tickets from 2025-01-01 onwards (this year only)',
+          dueDateFilter: input.dueDateBefore 
+            ? `Due date before ${input.dueDateBefore}` 
+            : input.dueDateAfter 
+              ? `Due date after ${input.dueDateAfter}` 
+              : 'No due date filter',
+          tickets: truncatedTickets,
+        }
+        
+        // Apply truncateResponse to ensure we don't exceed size limits
+        const responseText = truncateResponse(responseData, 45000) // Slightly under 50KB to be safe
+        
         return {
           content: [
             {
               type: 'text',
-              text: JSON.stringify(
-                {
-                  resourceName: input.resourceName,
-                  resourceID: resourceId,
-                  totalTicketsReturned: tickets.length,
-                  maxRecordsRequested: input.maxRecords || 50,
-                  sortedBy: input.sortByDate !== false ? 'createDate DESC (most recently created first, client-side sorted)' : 'none',
-                  dateFilter: daysToFilter === 0 
-                    ? 'No date filter (explicitly requested)' 
-                    : daysToFilter !== undefined && daysToFilter > 0 
-                      ? `Last ${daysToFilter} days (filtered by createDate)` 
-                      : 'Default filter: tickets from 2025-01-01 onwards (this year only)',
-                  dueDateFilter: input.dueDateBefore 
-                    ? `Due date before ${input.dueDateBefore}` 
-                    : input.dueDateAfter 
-                      ? `Due date after ${input.dueDateAfter}` 
-                      : 'No due date filter',
-                  tickets: tickets,
-                },
-                null,
-                2,
-              ),
+              text: responseText,
             },
           ],
         }
