@@ -219,11 +219,16 @@ export function registerTools(server: McpServer) {
         }
         
         const optimizedBody = enforceMaxRecords(ticketBody)
+        
+        console.log(`[getTicketsByCompanyName] Querying tickets for company ${companyId} with body:`, JSON.stringify(optimizedBody, null, 2))
+        
         const ticketData = await callApi(ticketsUrl, {
           method: 'POST',
           headers: getAutotaskHeaders({ 'Content-Type': 'application/json' }),
           body: JSON.stringify(optimizedBody),
         })
+        
+        console.log(`[getTicketsByCompanyName] API returned ${Array.isArray(ticketData) ? ticketData.length : 'non-array'} tickets`)
         
         const formatted = formatResponse(ticketData)
         const responseText = truncateResponse(formatted)
@@ -283,7 +288,20 @@ export function registerTools(server: McpServer) {
         }
         
         // Client-side sort by date as fallback (in case API doesn't respect sort parameter)
+        // ALWAYS sort client-side to ensure correct order regardless of API behavior
         if (input.sortByDate !== false && tickets.length > 0) {
+          console.log(`[getTicketsByCompanyName] Sorting ${tickets.length} tickets by date (DESC - most recent first)`)
+          
+          // Log first few tickets before sorting to see what API returned
+          if (tickets.length > 0) {
+            const sampleDates = tickets.slice(0, 3).map((t: any) => ({
+              id: t.id,
+              lastActivityDate: t.lastActivityDate,
+              createDate: t.createDate,
+            }))
+            console.log(`[getTicketsByCompanyName] Sample tickets before sort:`, JSON.stringify(sampleDates, null, 2))
+          }
+          
           tickets.sort((a: any, b: any) => {
             // Try multiple date fields in order of preference
             const getDate = (ticket: any): Date | null => {
@@ -308,16 +326,27 @@ export function registerTools(server: McpServer) {
             const dateA = getDate(a)
             const dateB = getDate(b)
             
-            // If both have dates, sort DESC (most recent first)
+            // If both have dates, sort DESC (most recent first) - larger date comes first
             if (dateA && dateB) {
-              return dateB.getTime() - dateA.getTime()
+              const diff = dateB.getTime() - dateA.getTime()
+              return diff
             }
-            // If only one has a date, prioritize it
+            // If only one has a date, prioritize it (put it first)
             if (dateA && !dateB) return -1
             if (!dateA && dateB) return 1
             // If neither has a date, maintain original order
             return 0
           })
+          
+          // Log first few tickets after sorting to verify
+          if (tickets.length > 0) {
+            const sampleDates = tickets.slice(0, 3).map((t: any) => ({
+              id: t.id,
+              lastActivityDate: t.lastActivityDate,
+              createDate: t.createDate,
+            }))
+            console.log(`[getTicketsByCompanyName] Sample tickets after sort:`, JSON.stringify(sampleDates, null, 2))
+          }
         }
         
         return {
