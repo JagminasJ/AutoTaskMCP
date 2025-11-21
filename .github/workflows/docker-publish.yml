@@ -31,13 +31,13 @@ jobs:
     - name: Set image name (lowercase)
       id: image
       run: |
-        echo "owner_lower=$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_OUTPUT
+        echo "actor_lower=$(echo '${{ github.actor }}' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_OUTPUT
     
     - name: Extract metadata
       id: meta
       uses: docker/metadata-action@v5
       with:
-        images: ghcr.io/${{ steps.image.outputs.owner_lower }}/autotaskmcp
+        images: ghcr.io/${{ steps.image.outputs.actor_lower }}/autotaskmcp
         tags: |
           type=ref,event=branch
           type=ref,event=pr
