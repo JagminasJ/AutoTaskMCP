@@ -13,12 +13,12 @@ export function registerTools(server: McpServer) {
   // PRIMARY TOOL - Place at top for visibility
   server.tool(
     'getTicketsByCompanyName',
-    `PRIMARY TOOL for tickets by company name. Use this when user asks for tickets from a company (e.g., "show me tickets for Company Name", "latest 5 tickets for Company Name", "recent tickets for Company Name"). This tool AUTOMATICALLY handles everything: finds the company, queries tickets, sorts by date (most recent first), and returns ACTUAL TICKET DETAILS. DO NOT use ticketsQueryCount - that returns only a number and cannot filter by company name. DO NOT enumerate or count tickets - this tool already returns the most recent tickets sorted by date. The tool handles all filtering and sorting server-side, so you get the most recent tickets directly without needing to count or paginate.`,
+    `PRIMARY TOOL for tickets by company name. Use this when user asks for tickets from a company (e.g., "show me tickets for Company Name", "latest 5 tickets for Company Name", "recent tickets for Company Name"). This tool AUTOMATICALLY handles everything: finds the company, queries tickets, sorts by date (most recent first), and returns ACTUAL TICKET DETAILS. For "most recent" or "latest" queries, the tool automatically filters to the last 90 days to ensure you get truly recent tickets. Use daysAgo parameter to override this (e.g., 30 for last month, 180 for last 6 months). DO NOT use ticketsQueryCount - that returns only a number and cannot filter by company name. DO NOT enumerate or count tickets - this tool already returns the most recent tickets sorted by date. The tool handles all filtering and sorting server-side, so you get the most recent tickets directly without needing to count or paginate.`,
     {
       companyName: z.string().describe('The name of the company to search for'),
       maxRecords: z.number().max(100).optional().describe('Number of tickets to return (default: 50, max: 100). The tool automatically sorts by date DESC, so this returns the N most recent tickets.'),
       sortByDate: z.boolean().optional().describe('Sort by lastActivityDate descending (default: true). When true, returns most recent tickets first.'),
-      daysAgo: z.number().optional().describe('ONLY use this when user explicitly mentions a time period (e.g., "last 30 days", "last month", "last year"). DO NOT use this for "most recent" or "latest" queries without a time period - leave it undefined to get the truly most recent tickets. If specified, filters tickets to only those with activity in the last N days.'),
+      daysAgo: z.number().optional().describe('Optional: Number of days to look back. For "most recent" or "latest" queries without a time period, leave undefined (defaults to 90 days to ensure recent tickets). Only specify when user explicitly mentions a time period (e.g., "last 30 days" = 30, "last month" = 30, "last year" = 365).'),
     },
     async (input, extra) => {
       try {
@@ -190,18 +190,18 @@ export function registerTools(server: McpServer) {
           maxRecords: input.maxRecords || 50, // Increased default to 50 for better results
         }
         
-        // Add date filter ONLY if daysAgo is explicitly provided
-        // Do NOT apply default filtering - let the user get the truly most recent tickets
+        // Add date filter - default to 90 days for "most recent" queries to ensure we get recent tickets
         // If daysAgo is explicitly 0, don't filter (return all tickets)
-        const daysToFilter = input.daysAgo
-        if (daysToFilter !== undefined && daysToFilter > 0) {
+        // If daysAgo is undefined, use 90 days as default for "most recent" queries
+        const daysToFilter = input.daysAgo !== undefined ? input.daysAgo : 90
+        if (daysToFilter > 0) {
           const cutoffDate = new Date()
           cutoffDate.setDate(cutoffDate.getDate() - daysToFilter)
           cutoffDate.setHours(0, 0, 0, 0)
           // Format as ISO string for API (Autotask expects ISO format)
           const cutoffDateStr = cutoffDate.toISOString()
           
-          console.log(`[getTicketsByCompanyName] Filtering tickets: lastActivityDate >= ${cutoffDateStr} (last ${daysToFilter} days)`)
+          console.log(`[getTicketsByCompanyName] Filtering tickets: lastActivityDate >= ${cutoffDateStr} (last ${daysToFilter} days${input.daysAgo === undefined ? ' - default for most recent' : ''})`)
           
           // Filter by lastActivityDate to get truly recent tickets
           ticketBody.filter.push({
@@ -241,8 +241,8 @@ export function registerTools(server: McpServer) {
         }
         
         // Client-side date filter as fallback (in case API doesn't respect filter parameter)
-        // Only apply if daysAgo was explicitly provided
-        if (daysToFilter !== undefined && daysToFilter > 0 && tickets.length > 0) {
+        // Always apply if we have a filter (daysToFilter is always set now, defaulting to 90)
+        if (daysToFilter > 0 && tickets.length > 0) {
           const cutoffDate = new Date()
           cutoffDate.setDate(cutoffDate.getDate() - daysToFilter)
           cutoffDate.setHours(0, 0, 0, 0)
@@ -330,7 +330,7 @@ export function registerTools(server: McpServer) {
                   totalTicketsReturned: tickets.length,
                   maxRecordsRequested: input.maxRecords || 50,
                   sortedBy: input.sortByDate !== false ? 'lastActivityDate DESC (most recent first, client-side sorted)' : 'none',
-                  dateFilter: input.daysAgo !== undefined ? `Last ${input.daysAgo} days (filtered by lastActivityDate)` : 'No date filter - showing most recent tickets',
+                  dateFilter: `Last ${daysToFilter} days (filtered by lastActivityDate${input.daysAgo === undefined ? ' - default for most recent queries' : ''})`,
                   dateRange: tickets.length > 0 ? (() => {
                     const dates = tickets.map((t: any) => {
                       const d = new Date(t.lastActivityDate || t.createDate || 0)
