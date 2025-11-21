@@ -21,30 +21,142 @@ export function registerTools(server: McpServer) {
     },
     async (input, extra) => {
       try {
-        // Step 1: Find company by name
+        // Step 1: Find company by name - try multiple search strategies
         const companySearchUrl = `https://webservices15.autotask.net/ATServicesRest/V1.0/Companies/query`
-        const companyData = await callApi(companySearchUrl, {
-          method: 'GET',
-          headers: getAutotaskHeaders(),
-          params: { search: input.companyName },
-        })
-        
-        // Extract company ID - handle different response formats
+        let companyData: any = null
         let companyId: string | null = null
-        if (Array.isArray(companyData) && companyData.length > 0) {
-          const firstCompany = companyData[0]
-          companyId = firstCompany.id?.toString() || firstCompany.companyID?.toString() || firstCompany.ID?.toString() || null
-        } else if (companyData && typeof companyData === 'object') {
-          // Handle object response
-          if ('items' in companyData && Array.isArray(companyData.items) && companyData.items.length > 0) {
-            const firstCompany = companyData.items[0]
-            companyId = firstCompany.id?.toString() || firstCompany.companyID?.toString() || firstCompany.ID?.toString() || null
-          } else {
-            companyId = (companyData as any).id?.toString() || (companyData as any).companyID?.toString() || (companyData as any).ID?.toString() || null
+        let allCompanies: any[] = []
+        
+        // Strategy 1: Try GET with search parameter (simple text search)
+        try {
+          companyData = await callApi(companySearchUrl, {
+            method: 'GET',
+            headers: getAutotaskHeaders(),
+            params: { search: input.companyName },
+          })
+          
+          // Collect all results
+          if (Array.isArray(companyData)) {
+            allCompanies = companyData
+          } else if (companyData && typeof companyData === 'object') {
+            if ('items' in companyData && Array.isArray(companyData.items)) {
+              allCompanies = companyData.items
+            } else if (Array.isArray((companyData as any).data)) {
+              allCompanies = (companyData as any).data
+            }
+          }
+        } catch (error) {
+          console.log('GET search failed, trying POST query:', error)
+        }
+        
+        // Strategy 2: If no results, try POST query with contains filter (case-insensitive partial match)
+        if (allCompanies.length === 0) {
+          try {
+            const searchTerms = input.companyName.split(/\s+/).filter(t => t.length > 0)
+            // Try searching for each word in the company name
+            for (const term of searchTerms) {
+              const postData = {
+                filter: [
+                  {
+                    field: 'companyName',
+                    op: 'contains',
+                    value: term,
+                  },
+                ],
+                maxRecords: 20,
+              }
+              
+              companyData = await callApi(companySearchUrl, {
+                method: 'POST',
+                headers: getAutotaskHeaders({ 'Content-Type': 'application/json' }),
+                body: JSON.stringify(postData),
+              })
+              
+              if (Array.isArray(companyData)) {
+                allCompanies = companyData
+              } else if (companyData && typeof companyData === 'object') {
+                if ('items' in companyData && Array.isArray(companyData.items)) {
+                  allCompanies = companyData.items
+                } else if (Array.isArray((companyData as any).data)) {
+                  allCompanies = (companyData as any).data
+                }
+              }
+              
+              if (allCompanies.length > 0) break
+            }
+          } catch (error) {
+            console.log('POST query failed:', error)
           }
         }
         
+        // Strategy 3: Try exact match (case-insensitive)
+        if (allCompanies.length === 0) {
+          try {
+            const postData = {
+              filter: [
+                {
+                  field: 'companyName',
+                  op: 'eq',
+                  value: input.companyName,
+                },
+              ],
+              maxRecords: 10,
+            }
+            
+            companyData = await callApi(companySearchUrl, {
+              method: 'POST',
+              headers: getAutotaskHeaders({ 'Content-Type': 'application/json' }),
+              body: JSON.stringify(postData),
+            })
+            
+            if (Array.isArray(companyData)) {
+              allCompanies = companyData
+            } else if (companyData && typeof companyData === 'object') {
+              if ('items' in companyData && Array.isArray(companyData.items)) {
+                allCompanies = companyData.items
+              } else if (Array.isArray((companyData as any).data)) {
+                allCompanies = (companyData as any).data
+              }
+            }
+          } catch (error) {
+            console.log('Exact match query failed:', error)
+          }
+        }
+        
+        // Find best match (exact match first, then partial)
+        let bestMatch: any = null
+        const searchNameLower = input.companyName.toLowerCase().trim()
+        
+        // First try exact match (case-insensitive)
+        bestMatch = allCompanies.find((c: any) => {
+          const name = (c.companyName || c.name || '').toLowerCase().trim()
+          return name === searchNameLower
+        })
+        
+        // If no exact match, try contains match
+        if (!bestMatch) {
+          bestMatch = allCompanies.find((c: any) => {
+            const name = (c.companyName || c.name || '').toLowerCase().trim()
+            return name.includes(searchNameLower) || searchNameLower.includes(name)
+          })
+        }
+        
+        // If still no match, use first result
+        if (!bestMatch && allCompanies.length > 0) {
+          bestMatch = allCompanies[0]
+        }
+        
+        // Extract company ID
+        if (bestMatch) {
+          companyId = bestMatch.id?.toString() || bestMatch.companyID?.toString() || bestMatch.ID?.toString() || null
+        }
+        
         if (!companyId) {
+          // Provide helpful suggestions
+          const suggestions = allCompanies.length > 0 
+            ? allCompanies.slice(0, 5).map((c: any) => c.companyName || c.name || 'Unknown').filter(Boolean)
+            : []
+          
           return {
             content: [
               {
@@ -53,7 +165,13 @@ export function registerTools(server: McpServer) {
                   {
                     error: 'Company not found',
                     message: `Could not find a company matching "${input.companyName}"`,
-                    suggestion: 'Check the company name spelling or try a partial name',
+                    searchedName: input.companyName,
+                    suggestions: suggestions.length > 0 
+                      ? `Found ${suggestions.length} similar companies: ${suggestions.join(', ')}`
+                      : 'No similar companies found',
+                    recommendation: suggestions.length > 0
+                      ? `Try using one of the suggested company names above, or use a partial name like "${input.companyName.split(' ')[0]}"`
+                      : 'Check the company name spelling or try searching with a partial name',
                   },
                   null,
                   2,
