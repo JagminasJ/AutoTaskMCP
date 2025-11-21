@@ -187,12 +187,14 @@ export function registerTools(server: McpServer) {
         
         // Step 2: Query tickets by company ID with automatic date filtering and sorting
         const ticketsUrl = `https://webservices15.autotask.net/ATServicesRest/V1.0/Tickets/query`
-        // Fetch MORE records than requested to ensure we get the most recent ones
-        // The API might not respect sort order, so we fetch more, sort client-side, then take top N
-        const fetchSize = Math.max((input.maxRecords || 5) * 3, 100) // Fetch 3x requested or at least 100
+        // Fetch MANY more records than requested to ensure we get the most recent ones
+        // The API might return tickets in ASC order (oldest first) or not respect sort,
+        // so we fetch a large sample, sort client-side, then take top N
+        // Fetch at least 500 tickets to ensure we get recent ones even if API returns oldest-first
+        const fetchSize = Math.max((input.maxRecords || 5) * 100, 500)
         const ticketBody: any = {
           filter: [{ field: 'companyID', op: 'eq', value: companyIdNum }], // Use number, not string
-          maxRecords: fetchSize, // Fetch more to ensure we get recent tickets
+          maxRecords: fetchSize, // Fetch many more to ensure we get recent tickets
         }
         
         // Note: We do NOT filter by lastActivityDate on the server side because:
@@ -202,12 +204,10 @@ export function registerTools(server: McpServer) {
         const daysToFilter = input.daysAgo
         console.log(`[getTicketsByCompanyName] No server-side date filter (will filter client-side). daysAgo: ${daysToFilter}`)
         
-        // Try to sort by createDate on server side (more likely to be supported)
-        // We'll re-sort by lastActivityDate client-side for better accuracy
-        if (input.sortByDate !== false) {
-          ticketBody.sort = [{ field: 'createDate', direction: 'DESC' }]
-          console.log(`[getTicketsByCompanyName] Server-side sort: createDate DESC (will re-sort by lastActivityDate client-side)`)
-        }
+        // DON'T rely on server-side sort - the API might not respect it or might return ASC
+        // We'll fetch a large sample and sort client-side to ensure correct order
+        // Remove sort from request to avoid API potentially returning in wrong order
+        console.log(`[getTicketsByCompanyName] No server-side sort (will sort client-side by lastActivityDate DESC)`)
         
         const optimizedBody = enforceMaxRecords(ticketBody)
         
