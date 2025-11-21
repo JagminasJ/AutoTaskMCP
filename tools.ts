@@ -13,7 +13,7 @@ export function registerTools(server: McpServer) {
   // PRIMARY TOOL - Place at top for visibility
   server.tool(
     'getTicketsByCompanyName',
-    `⚠️ USE THIS TOOL when user asks for tickets by company name (e.g., "show me tickets for Company Name" or "latest 5 tickets for Company Name"). This tool automatically finds the company and returns ACTUAL TICKET DETAILS. DO NOT use ticketsQueryCount - that returns only a number. This tool handles company lookup and ticket query automatically. Returns full ticket records with ID, number, title, status, priority, dates, etc.`,
+    `USE THIS TOOL when user asks for tickets by company name (e.g., "show me tickets for Company Name" or "latest 5 tickets for Company Name"). This tool automatically finds the company and returns ACTUAL TICKET DETAILS. DO NOT use ticketsQueryCount - that returns only a number. This tool handles company lookup and ticket query automatically. Returns full ticket records with ID, number, title, status, priority, dates, etc.`,
     {
       companyName: z.string().describe('The name of the company to search for'),
       maxRecords: z.number().max(100).optional().describe('Number of tickets to return (default: 20, max: 100)'),
