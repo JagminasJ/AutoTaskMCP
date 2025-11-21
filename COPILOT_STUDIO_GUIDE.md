@@ -1,0 +1,190 @@
+# Copilot Studio Configuration Guide for AutotaskMCP
+
+This guide helps you optimize your Copilot Studio agent to work effectively with the AutotaskMCP server.
+
+## Key Optimizations Implemented
+
+### 1. Response Size Management
+- **Automatic truncation**: Responses larger than ~50KB are automatically truncated
+- **Default limits**: Queries default to 20 records (max 100)
+- **Smart summaries**: Large responses include summaries with record counts
+
+### 2. Tool Descriptions
+All tools now include detailed descriptions to help the agent:
+- Understand when to use each tool
+- Construct proper queries
+- Handle responses appropriately
+
+### 3. Error Handling
+- Clear error messages with suggestions
+- Guidance on fixing common issues
+- Recommendations for alternative approaches
+
+## Copilot Studio Configuration Recommendations
+
+### 1. System Message / Instructions
+
+Add these instructions to your Copilot Studio agent's system message:
+
+```
+You are a helpful assistant that answers questions about Autotask tickets, companies, contacts, and related information.
+
+IMPORTANT GUIDELINES:
+1. Always use maxRecords parameter (20-50 recommended) when querying tickets to prevent large responses
+2. Use ticketsQueryCount when only a count is needed, not full records
+3. Use specific filters to narrow down results before querying
+4. For questions about "how many" or "count", use *QueryCount tools
+5. For specific ticket details, use ticketsQueryItem with the ticket ID
+6. For complex queries, use ticketsQuery with filters
+7. For simple text searches, use ticketsUrlParameterQuery
+
+RESPONSE HANDLING:
+- If you receive a truncated response, inform the user and suggest more specific filters
+- If you get an error about response size, reduce maxRecords or add more filters
+- Always present results in a clear, user-friendly format
+```
+
+### 2. Conversation Starters
+
+Add these conversation starters to help users:
+- "Show me the last 10 tickets for [Company Name]"
+- "How many open tickets are there?"
+- "What's the status of ticket [Ticket Number]?"
+- "List tickets created in the last week"
+- "Show me tickets by category [Category Name]"
+
+### 3. Topics / Triggers
+
+Create topics for common queries:
+- **Ticket Status**: "What's the status of ticket [X]?"
+- **Ticket History**: "Show me tickets for [Company]"
+- **Ticket Count**: "How many [status/priority/category] tickets are there?"
+- **Ticket Search**: "Find tickets about [search term]"
+
+### 4. Variable Management
+
+Store commonly used values:
+- Company IDs (if frequently queried)
+- Status IDs
+- Priority levels
+- Category IDs
+
+### 5. Response Formatting
+
+In your Power Automate flows or node actions, format responses:
+- Extract key fields (ticket number, title, status, priority)
+- Present in tables or lists
+- Include links to full ticket details if needed
+
+## Best Practices
+
+### Query Construction
+
+**Good Query Examples:**
+```json
+// Get recent tickets for a company
+{
+  "filter": [
+    { "field": "companyID", "op": "eq", "value": "123" }
+  ],
+  "maxRecords": 20,
+  "sort": [{ "field": "createDate", "direction": "DESC" }]
+}
+
+// Count tickets by status
+{
+  "filter": [
+    { "field": "status", "op": "eq", "value": "5" }
+  ]
+}
+```
+
+**Avoid:**
+- Queries without maxRecords (will default to 20, but be explicit)
+- Queries without filters when you know specific criteria
+- Using ticketsQuery when ticketsQueryCount would suffice
+
+### Error Handling
+
+When you encounter errors:
+1. **Response too large**: Reduce maxRecords or add more specific filters
+2. **No results found**: Check filter values (IDs, status codes, etc.)
+3. **Invalid filter**: Verify field names and operator syntax
+4. **Timeout**: Break complex queries into smaller, more specific ones
+
+### Natural Language Translation
+
+Help the agent translate common phrases:
+
+| User Question | Tool | Query Pattern |
+|--------------|------|---------------|
+| "How many tickets..." | ticketsQueryCount | Filter by criteria |
+| "Show me tickets for..." | ticketsQuery | Filter by companyID/contactID |
+| "What's the status of ticket X" | ticketsQueryItem | Use ticket ID |
+| "Recent tickets" | ticketsQuery | Filter by createDate, sort DESC |
+| "Tickets by priority" | ticketsQuery | Filter by priority field |
+| "Tickets in category X" | ticketsQuery | Filter by categoryID |
+
+## Monitoring and Troubleshooting
+
+### Check Response Sizes
+- Monitor logs for truncation warnings
+- Adjust maxRecords based on typical response sizes
+- Use ticketsQueryCount for large datasets
+
+### Common Issues
+
+1. **"Response too large" error**
+   - Solution: Reduce maxRecords or add more filters
+   - Use ticketsQueryCount instead of ticketsQuery when possible
+
+2. **Agent not using correct tool**
+   - Solution: Improve tool descriptions in system message
+   - Add examples in conversation starters
+
+3. **Slow responses**
+   - Solution: Use more specific filters
+   - Consider caching frequently accessed data
+
+4. **Incomplete results**
+   - Solution: Check if response was truncated
+   - Use pagination if needed (multiple queries with different offsets)
+
+## Advanced Configuration
+
+### Custom Power Automate Flows
+
+Create flows to:
+- Format ticket responses into cards
+- Extract and summarize key information
+- Handle pagination for large result sets
+- Cache frequently accessed data
+
+### Response Post-Processing
+
+After receiving MCP responses:
+1. Parse JSON response
+2. Extract essential fields
+3. Format for user-friendly display
+4. Add navigation/action buttons if needed
+
+## Testing
+
+Test these scenarios:
+1. ✅ Simple ticket lookup by ID
+2. ✅ Company ticket list (with maxRecords)
+3. ✅ Ticket count queries
+4. ✅ Filtered queries (status, priority, category)
+5. ✅ Date range queries
+6. ✅ Text search queries
+7. ✅ Large result set handling
+
+## Support
+
+If you encounter issues:
+1. Check MCP server logs for errors
+2. Verify API credentials are correct
+3. Test queries directly against Autotask API
+4. Review response sizes and adjust maxRecords
+5. Check Copilot Studio agent logs for tool call errors
+

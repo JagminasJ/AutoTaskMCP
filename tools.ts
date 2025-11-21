@@ -2,6 +2,12 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
 import { callApi } from './postman.js'
 import { getAutotaskHeaders } from './config.js'
+import {
+  truncateResponse,
+  enforceMaxRecords,
+  formatResponse,
+  extractEssentialFields,
+} from './response-utils.js'
 
 export function registerTools(server: McpServer) {
   server.tool(
@@ -1552,7 +1558,7 @@ export function registerTools(server: McpServer) {
   )
   server.tool(
     'ticketsQueryCount',
-    `Generated from Postman`,
+    `Get the count of tickets matching filter criteria. Use this when you only need the number of tickets, not the full records. This is faster and returns smaller responses than ticketsQuery. Useful for questions like "How many tickets..." or "Count tickets...".`,
     { body: z.any() },
     async (input, extra) => {
       try {
@@ -1568,7 +1574,20 @@ export function registerTools(server: McpServer) {
       } catch (error) {
         const msg = error instanceof Error ? error.message : String(error)
         return {
-          content: [{ type: 'text', text: `Error: ${msg}` }],
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify(
+                {
+                  error: 'Failed to count tickets',
+                  message: msg,
+                  suggestion: 'Check your filter criteria',
+                },
+                null,
+                2,
+              ),
+            },
+          ],
           isError: true,
         }
       }
@@ -1576,7 +1595,7 @@ export function registerTools(server: McpServer) {
   )
   server.tool(
     'ticketsUrlParameterQuery',
-    `Generated from Postman`,
+    `Simple text search for tickets. Use this for quick searches by ticket number, title, or description text. Returns limited results. For complex queries with filters, use ticketsQuery instead.`,
     { search: z.string() },
     async (input, extra) => {
       try {
@@ -1586,13 +1605,31 @@ export function registerTools(server: McpServer) {
           headers: getAutotaskHeaders(),
           params: { search: input.search },
         })
+        
+        // Format and truncate response
+        const formatted = formatResponse(data)
+        const responseText = truncateResponse(formatted)
+        
         return {
-          content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
+          content: [{ type: 'text', text: responseText }],
         }
       } catch (error) {
         const msg = error instanceof Error ? error.message : String(error)
         return {
-          content: [{ type: 'text', text: `Error: ${msg}` }],
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify(
+                {
+                  error: 'Failed to search tickets',
+                  message: msg,
+                  suggestion: 'Try a more specific search term or use ticketsQuery for complex searches',
+                },
+                null,
+                2,
+              ),
+            },
+          ],
           isError: true,
         }
       }
@@ -1600,23 +1637,50 @@ export function registerTools(server: McpServer) {
   )
   server.tool(
     'ticketsQuery',
-    `Generated from Postman`,
-    { body: z.any() },
+    `Query tickets with filters, sorting, and pagination. Use this for complex queries about tickets, their status, priority, categories, companies, contacts, or service calls. Always include maxRecords (default: 20, max: 100) to limit response size. Returns ticket information including ID, number, title, status, priority, company, contact, dates, and category.`,
+    {
+      body: z.object({
+        filter: z.array(z.any()).optional(),
+        maxRecords: z.number().max(100).optional(),
+        sort: z.array(z.any()).optional(),
+        fields: z.array(z.string()).optional(),
+      }),
+    },
     async (input, extra) => {
       try {
         const baseUrl = `https://webservices15.autotask.net/ATServicesRest/V1.0/Tickets/query`
+        const optimizedBody = enforceMaxRecords(input.body)
         const data = await callApi(baseUrl, {
           method: 'POST',
           headers: getAutotaskHeaders({ 'Content-Type': 'application/json' }),
-          body: JSON.stringify(input.body),
+          body: JSON.stringify(optimizedBody),
         })
+        
+        // Format and truncate response if needed
+        const formatted = formatResponse(data)
+        const responseText = truncateResponse(formatted)
+        
         return {
-          content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
+          content: [{ type: 'text', text: responseText }],
         }
       } catch (error) {
         const msg = error instanceof Error ? error.message : String(error)
         return {
-          content: [{ type: 'text', text: `Error: ${msg}` }],
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify(
+                {
+                  error: 'Failed to query tickets',
+                  message: msg,
+                  suggestion:
+                    'Check your filters and ensure maxRecords is set (recommended: 20-50)',
+                },
+                null,
+                2,
+              ),
+            },
+          ],
           isError: true,
         }
       }
@@ -1624,7 +1688,7 @@ export function registerTools(server: McpServer) {
   )
   server.tool(
     'ticketsQueryItem',
-    `Generated from Postman`,
+    `Get a specific ticket by its ID. Use this when you have a ticket ID or ticket number and need full details. Returns complete ticket information including status, priority, category, company, contact, dates, and description.`,
     { id: z.string() },
     async (input, extra) => {
       try {

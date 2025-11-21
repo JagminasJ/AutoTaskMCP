@@ -36,11 +36,19 @@ export function registerResources(server: McpServer) {
                 },
                 exampleQueries: {
                   ticketsByCompany:
-                    'Use ticketsQuery tool with body: { filter: [{ field: "companyID", op: "eq", value: "123" }] }',
+                    'Use ticketsQuery tool with body: { filter: [{ field: "companyID", op: "eq", value: "123" }], maxRecords: 20 }',
                   recentTickets:
-                    'Use ticketsQuery with body: { filter: [{ field: "createDate", op: "gte", value: "2024-01-01T00:00:00" }], maxRecords: 5 }',
+                    'Use ticketsQuery with body: { filter: [{ field: "createDate", op: "gte", value: "2024-01-01T00:00:00" }], maxRecords: 10, sort: [{ field: "createDate", direction: "DESC" }] }',
                   ticketCount:
-                    'Use ticketsQueryCount tool with filter object to get count of matching tickets',
+                    'Use ticketsQueryCount tool with filter object to get count of matching tickets (returns only count, not records)',
+                  ticketByStatus:
+                    'Use ticketsQuery with body: { filter: [{ field: "status", op: "eq", value: "STATUS_ID" }], maxRecords: 20 }',
+                },
+                responseOptimization: {
+                  alwaysUseMaxRecords: 'Always include maxRecords (20-50 recommended) to prevent large responses',
+                  useCountForNumbers: 'Use *QueryCount tools when only the count is needed, not full records',
+                  useSpecificFilters: 'Add specific filters to reduce result set size',
+                  responseLimit: 'Responses are automatically truncated at ~50KB to prevent errors',
                 },
                 authentication: {
                   note: 'Authentication is handled automatically via configured credentials',
