@@ -13,11 +13,12 @@ export function registerTools(server: McpServer) {
   // PRIMARY TOOL - Place at top for visibility
   server.tool(
     'getTicketsByCompanyName',
-    `USE THIS TOOL when user asks for tickets by company name (e.g., "show me tickets for Company Name" or "latest 5 tickets for Company Name"). This tool automatically finds the company and returns ACTUAL TICKET DETAILS. DO NOT use ticketsQueryCount - that returns only a number. This tool handles company lookup and ticket query automatically. Returns full ticket records with ID, number, title, status, priority, dates, etc.`,
+    `PRIMARY TOOL for tickets by company name. Use this when user asks for tickets from a company (e.g., "show me tickets for Company Name", "latest 5 tickets for Company Name", "recent tickets for Company Name"). This tool AUTOMATICALLY handles everything: finds the company, queries tickets, sorts by date (most recent first), and returns ACTUAL TICKET DETAILS. DO NOT use ticketsQueryCount - that returns only a number and cannot filter by company name. DO NOT enumerate or count tickets - this tool already returns the most recent tickets sorted by date. The tool handles all filtering and sorting server-side, so you get the most recent tickets directly without needing to count or paginate.`,
     {
       companyName: z.string().describe('The name of the company to search for'),
-      maxRecords: z.number().max(100).optional().describe('Number of tickets to return (default: 20, max: 100)'),
-      sortByDate: z.boolean().optional().describe('Sort by create date descending (default: true)'),
+      maxRecords: z.number().max(100).optional().describe('Number of tickets to return (default: 50, max: 100). The tool automatically sorts by date DESC, so this returns the N most recent tickets.'),
+      sortByDate: z.boolean().optional().describe('Sort by create date descending (default: true). When true, returns most recent tickets first.'),
+      daysAgo: z.number().optional().describe('Optional: Only return tickets created within the last N days (e.g., 30 for last month, 7 for last week). If not specified, returns all tickets sorted by date.'),
     },
     async (input, extra) => {
       try {
@@ -182,13 +183,26 @@ export function registerTools(server: McpServer) {
           }
         }
         
-        // Step 2: Query tickets by company ID
+        // Step 2: Query tickets by company ID with automatic date filtering and sorting
         const ticketsUrl = `https://webservices15.autotask.net/ATServicesRest/V1.0/Tickets/query`
         const ticketBody: any = {
           filter: [{ field: 'companyID', op: 'eq', value: companyId }],
-          maxRecords: input.maxRecords || 20,
+          maxRecords: input.maxRecords || 50, // Increased default to 50 for better results
         }
         
+        // Add date filter if daysAgo is specified
+        if (input.daysAgo && input.daysAgo > 0) {
+          const cutoffDate = new Date()
+          cutoffDate.setDate(cutoffDate.getDate() - input.daysAgo)
+          const cutoffDateStr = cutoffDate.toISOString().split('T')[0] + 'T00:00:00'
+          ticketBody.filter.push({
+            field: 'createDate',
+            op: 'gte',
+            value: cutoffDateStr,
+          })
+        }
+        
+        // Always sort by date DESC to get most recent first (unless explicitly disabled)
         if (input.sortByDate !== false) {
           ticketBody.sort = [{ field: 'createDate', direction: 'DESC' }]
         }
@@ -203,6 +217,19 @@ export function registerTools(server: McpServer) {
         const formatted = formatResponse(ticketData)
         const responseText = truncateResponse(formatted)
         
+        // Parse tickets to get count for response metadata
+        let tickets: any[] = []
+        try {
+          const parsed = JSON.parse(responseText)
+          if (Array.isArray(parsed)) {
+            tickets = parsed
+          } else if (parsed && typeof parsed === 'object') {
+            tickets = (parsed as any).items || (parsed as any).data || [parsed]
+          }
+        } catch (e) {
+          tickets = []
+        }
+        
         return {
           content: [
             {
@@ -211,7 +238,12 @@ export function registerTools(server: McpServer) {
                 {
                   companyName: input.companyName,
                   companyID: companyId,
-                  tickets: JSON.parse(responseText),
+                  totalTicketsReturned: tickets.length,
+                  maxRecordsRequested: input.maxRecords || 50,
+                  sortedBy: input.sortByDate !== false ? 'createDate DESC (most recent first)' : 'none',
+                  dateFilter: input.daysAgo ? `Last ${input.daysAgo} days` : 'All dates',
+                  note: 'These are the most recent tickets automatically sorted by date. No counting or enumeration needed - the tool handles all filtering server-side.',
+                  tickets: tickets,
                 },
                 null,
                 2,
@@ -1797,7 +1829,7 @@ export function registerTools(server: McpServer) {
   )
   server.tool(
     'ticketsQueryCount',
-    `⚠️ WARNING: This tool returns ONLY a number count, NEVER ticket details. ONLY use when user explicitly asks "how many" or "count" tickets. DO NOT use for "show", "list", "get", "find", "retrieve", "latest", or "recent" tickets. DO NOT use when user provides a company name - use getTicketsByCompanyName instead. This tool cannot filter by companyName field (that field does not exist in tickets).`,
+    `⚠️ WARNING: This tool returns ONLY a number count, NEVER ticket details. ONLY use when user explicitly asks "how many" or "count" tickets. DO NOT use for "show", "list", "get", "find", "retrieve", "latest", or "recent" tickets. DO NOT use when user provides a company name - use getTicketsByCompanyName instead. DO NOT use this to enumerate tickets or determine how many tickets exist before querying - use getTicketsByCompanyName or ticketsQuery directly with maxRecords and sorting. This tool cannot filter by companyName field (that field does not exist in tickets).`,
     { body: z.any() },
     async (input, extra) => {
       try {

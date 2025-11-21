@@ -47,7 +47,7 @@ IMPORTANT GUIDELINES:
 7. For simple text searches, use ticketsUrlParameterQuery
 
 PRIMARY TOOLS FOR COMMON QUERIES:
-- getTicketsByCompanyName: Use this FIRST when user asks for tickets by company name (e.g., "show me tickets for Company Name" or "latest 5 tickets for Company Name"). This tool automatically handles company lookup and returns actual ticket details. DO NOT use ticketsQueryCount.
+- getTicketsByCompanyName: Use this FIRST when user asks for tickets by company name (e.g., "show me tickets for Company Name" or "latest 5 tickets for Company Name"). This tool automatically handles company lookup, date filtering, sorting by date (most recent first), and returns actual ticket details. DO NOT use ticketsQueryCount. DO NOT enumerate or count tickets - this tool already returns the most recent tickets sorted by date. The tool handles all filtering and sorting server-side, so you get the most recent tickets directly without needing to count or paginate.
 
 WORKFLOW FOR COMPANY NAME QUERIES:
 OPTION 1 (RECOMMENDED): Use getTicketsByCompanyName tool directly with companyName parameter. This handles everything automatically.
@@ -60,6 +60,8 @@ OPTION 2 (Manual): If getTicketsByCompanyName is not available:
 CRITICAL RULE: ticketsQueryCount returns ONLY a number, NEVER ticket details. 
 - Use ticketsQueryCount ONLY when user explicitly asks "how many" or "count"
 - Use ticketsQuery or getTicketsByCompanyName when user asks to "show", "list", "get", "find", "retrieve", "latest", or "recent" tickets
+- DO NOT use ticketsQueryCount to enumerate tickets or determine how many exist before querying - use getTicketsByCompanyName or ticketsQuery directly with maxRecords and sorting
+- getTicketsByCompanyName automatically sorts by date (most recent first) and handles all filtering server-side - no counting or enumeration needed
 
 RESPONSE HANDLING:
 - If you receive a truncated response, inform the user and suggest more specific filters
