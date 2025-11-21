@@ -136,9 +136,43 @@ These can be set:
    git push -u origin main
    ```
 
-### Publishing to Docker Hub
+### Publishing Docker Images (Optional)
 
-#### Option 1: Manual Build and Push
+**Note**: If you're deploying to Northflank or similar platforms that build from source, you don't need to publish images to a registry. The platform will build directly from your Dockerfile.
+
+#### Option 1: GitHub Container Registry (Default - Automated)
+
+The repository includes GitHub Actions workflows that automatically build and push to GitHub Container Registry (ghcr.io):
+
+1. **Push to main/master branch**:
+   - The CI workflow automatically builds and pushes on every push
+   - Images are published to: `ghcr.io/YOUR_USERNAME/autotaskmcp:latest`
+   - No additional setup required (uses GitHub token automatically)
+
+2. **Create a release**:
+   - Create a GitHub release to trigger versioned tags
+   - The `docker-publish.yml` workflow handles release builds
+
+#### Option 2: Manual Build and Push to GitHub Container Registry
+
+1. **Build the Docker image**:
+   ```bash
+   docker build -t ghcr.io/YOUR_USERNAME/autotaskmcp:latest .
+   ```
+
+2. **Login to GitHub Container Registry**:
+   ```bash
+   echo $GITHUB_TOKEN | docker login ghcr.io -u YOUR_USERNAME --password-stdin
+   ```
+
+3. **Push the image**:
+   ```bash
+   docker push ghcr.io/YOUR_USERNAME/autotaskmcp:latest
+   ```
+
+#### Option 3: Docker Hub (Optional - Manual Setup Required)
+
+If you prefer Docker Hub, you can manually build and push:
 
 1. **Build the Docker image**:
    ```bash
@@ -155,32 +189,9 @@ These can be set:
    docker push YOUR_DOCKERHUB_USERNAME/autotaskmcp:latest
    ```
 
-#### Option 2: Automated via GitHub Actions
-
-The repository includes GitHub Actions workflows for automated Docker builds:
-
-1. **Set up Docker Hub secrets in GitHub**:
-   - Go to your repository → Settings → Secrets and variables → Actions
-   - Add the following secrets:
-     - `DOCKER_USERNAME`: Your Docker Hub username
-     - `DOCKER_PASSWORD`: Your Docker Hub access token (not password)
-
-2. **Push to main/master branch**:
-   - The CI workflow will automatically build and push the image on every push
-   - Images will be tagged as `YOUR_USERNAME/autotaskmcp:latest` and `YOUR_USERNAME/autotaskmcp:COMMIT_SHA`
-
-3. **Create a release**:
-   - Create a GitHub release to trigger the `docker-publish.yml` workflow
-   - This will create versioned tags for your Docker image
-
-#### Using the Published Image
-
-Once published, others can use your image:
-
-```bash
-docker pull YOUR_DOCKERHUB_USERNAME/autotaskmcp:latest
-docker run -p 3000:3000 YOUR_DOCKERHUB_USERNAME/autotaskmcp:latest
-```
+**Note**: The GitHub Actions workflows use GitHub Container Registry by default. To use Docker Hub with GitHub Actions, you would need to:
+- Add `DOCKER_USERNAME` and `DOCKER_PASSWORD` secrets to your repository
+- Modify the workflows to use Docker Hub instead of GHCR
 
 ## License
 
