@@ -9,6 +9,59 @@ import {
   extractEssentialFields,
 } from './response-utils.js'
 
+// Helper functions to convert numeric status and priority to text
+function getStatusText(status: number | undefined | null): string | null {
+  if (status === undefined || status === null) return null
+  
+  const statusMap: Record<number, string> = {
+    1: 'New',
+    2: 'In Progress',
+    3: 'Complete',
+    4: 'Waiting',
+    5: 'Closed',
+    6: 'Deleted',
+    7: 'Pending',
+    8: 'On Hold',
+    9: 'Cancelled',
+    10: 'Resolved',
+  }
+  
+  return statusMap[status] || `Status ${status}`
+}
+
+function getPriorityText(priority: number | undefined | null): string | null {
+  if (priority === undefined || priority === null) return null
+  
+  const priorityMap: Record<number, string> = {
+    1: 'Low',
+    2: 'Medium',
+    3: 'High',
+    4: 'Critical',
+    5: 'Emergency',
+  }
+  
+  return priorityMap[priority] || `Priority ${priority}`
+}
+
+// Helper function to enrich ticket with text values for status and priority
+function enrichTicketWithTextValues(ticket: any): any {
+  const enriched = { ...ticket }
+  
+  // Add statusText if status exists
+  if (ticket.status !== undefined && ticket.status !== null) {
+    enriched.statusText = getStatusText(ticket.status)
+    // Keep original status value as well for filtering purposes
+  }
+  
+  // Add priorityText if priority exists
+  if (ticket.priority !== undefined && ticket.priority !== null) {
+    enriched.priorityText = getPriorityText(ticket.priority)
+    // Keep original priority value as well for filtering purposes
+  }
+  
+  return enriched
+}
+
 export function registerTools(server: McpServer) {
   // PRIMARY TOOL - Place at top for visibility
   server.tool(
@@ -426,14 +479,15 @@ export function registerTools(server: McpServer) {
           }
         }
         
-        // Truncate large fields in tickets to reduce response size
+        // Truncate large fields in tickets to reduce response size and add status/priority text
         const truncatedTickets = tickets.map((ticket: any) => {
           const truncated: any = { ...ticket }
           // Truncate description field if it's too long (common source of large responses)
           if (truncated.description && typeof truncated.description === 'string' && truncated.description.length > 500) {
             truncated.description = truncated.description.substring(0, 500) + '... [truncated]'
           }
-          return truncated
+          // Add status and priority text
+          return enrichTicketWithTextValues(truncated)
         })
         
         const responseData = {
@@ -1021,7 +1075,8 @@ export function registerTools(server: McpServer) {
             truncated.userDefinedFields = ticket.userDefinedFields.slice(0, 5)
           }
           
-          return truncated
+          // Add status and priority text
+          return enrichTicketWithTextValues(truncated)
         })
         
         const responseData = {
@@ -1340,10 +1395,26 @@ export function registerTools(server: McpServer) {
               } else {
                 simplified.description = ticket.description || null
               }
+            } else if (field === 'status' || field === 'statusText') {
+              // Always include both status number and statusText
+              simplified.status = ticket.status
+              simplified.statusText = getStatusText(ticket.status)
+            } else if (field === 'priority' || field === 'priorityText') {
+              // Always include both priority number and priorityText
+              simplified.priority = ticket.priority
+              simplified.priorityText = getPriorityText(ticket.priority)
             } else if (ticket[field] !== undefined) {
               simplified[field] = ticket[field]
             }
           })
+          
+          // Always add statusText and priorityText if status/priority fields are present
+          if (ticket.status !== undefined && ticket.status !== null) {
+            simplified.statusText = getStatusText(ticket.status)
+          }
+          if (ticket.priority !== undefined && ticket.priority !== null) {
+            simplified.priorityText = getPriorityText(ticket.priority)
+          }
           
           return simplified
         })
@@ -2788,15 +2859,45 @@ export function registerTools(server: McpServer) {
               return 0
             })
             
-            // Reconstruct the response with sorted tickets
+            // Enrich tickets with status and priority text
+            const enrichedTickets = tickets.map((ticket: any) => enrichTicketWithTextValues(ticket))
+            
+            // Reconstruct the response with sorted and enriched tickets
             if (Array.isArray(parsed)) {
-              sortedData = tickets
+              sortedData = enrichedTickets
             } else {
-              sortedData = { ...parsed, items: tickets, data: tickets }
+              sortedData = { ...parsed, items: enrichedTickets, data: enrichedTickets }
+            }
+          } else {
+            // Even if no sorting, enrich tickets with status/priority text
+            if (Array.isArray(parsed)) {
+              sortedData = parsed.map((ticket: any) => enrichTicketWithTextValues(ticket))
+            } else if (parsed && typeof parsed === 'object') {
+              const items = (parsed as any).items || (parsed as any).data
+              if (Array.isArray(items)) {
+                sortedData = { ...parsed, items: items.map((ticket: any) => enrichTicketWithTextValues(ticket)), data: items.map((ticket: any) => enrichTicketWithTextValues(ticket)) }
+              } else {
+                sortedData = enrichTicketWithTextValues(parsed)
+              }
             }
           }
         } catch (e) {
-          // If parsing fails, use original formatted response
+          // If parsing fails, try to enrich the original formatted response
+          try {
+            const parsed = JSON.parse(responseText)
+            if (Array.isArray(parsed)) {
+              sortedData = parsed.map((ticket: any) => enrichTicketWithTextValues(ticket))
+            } else if (parsed && typeof parsed === 'object') {
+              const items = (parsed as any).items || (parsed as any).data
+              if (Array.isArray(items)) {
+                sortedData = { ...parsed, items: items.map((ticket: any) => enrichTicketWithTextValues(ticket)), data: items.map((ticket: any) => enrichTicketWithTextValues(ticket)) }
+              } else {
+                sortedData = enrichTicketWithTextValues(parsed)
+              }
+            }
+          } catch (e2) {
+            // If enrichment also fails, use original formatted response
+          }
         }
         
         return {
@@ -2917,7 +3018,7 @@ export function registerTools(server: McpServer) {
   )
   server.tool(
     'ticketsQueryItem',
-    `Get a specific ticket by its ID. Use this when you have a ticket ID or ticket number and need full details. Returns complete ticket information including status, priority, category, company, contact, dates, and description.`,
+    `Get a specific ticket by its ID. Use this when you have a ticket ID or ticket number and need full details. Returns complete ticket information including status, priority, category, company, contact, dates, and description. Status and priority are returned as both numeric values and text labels (statusText, priorityText).`,
     { id: z.string() },
     async (input, extra) => {
       try {
@@ -2926,8 +3027,10 @@ export function registerTools(server: McpServer) {
           method: 'GET',
           headers: getAutotaskHeaders(),
         })
+        // Enrich ticket with status and priority text
+        const enrichedData = enrichTicketWithTextValues(data)
         return {
-          content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
+          content: [{ type: 'text', text: JSON.stringify(enrichedData, null, 2) }],
         }
       } catch (error) {
         const msg = error instanceof Error ? error.message : String(error)
