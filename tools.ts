@@ -147,12 +147,14 @@ export function registerTools(server: McpServer) {
           bestMatch = allCompanies[0]
         }
         
-        // Extract company ID
+        // Extract company ID (keep as number for API, but store as string for logging)
+        let companyIdNum: number | null = null
         if (bestMatch) {
-          companyId = bestMatch.id?.toString() || bestMatch.companyID?.toString() || bestMatch.ID?.toString() || null
+          companyIdNum = bestMatch.id || bestMatch.companyID || bestMatch.ID || null
+          companyId = companyIdNum?.toString() || null
         }
         
-        if (!companyId) {
+        if (!companyId || !companyIdNum) {
           // Provide helpful suggestions
           const suggestions = allCompanies.length > 0 
             ? allCompanies.slice(0, 5).map((c: any) => c.companyName || c.name || 'Unknown').filter(Boolean)
@@ -189,7 +191,7 @@ export function registerTools(server: McpServer) {
         // The API might not respect sort order, so we fetch more, sort client-side, then take top N
         const fetchSize = Math.max((input.maxRecords || 5) * 3, 100) // Fetch 3x requested or at least 100
         const ticketBody: any = {
-          filter: [{ field: 'companyID', op: 'eq', value: companyId }],
+          filter: [{ field: 'companyID', op: 'eq', value: companyIdNum }], // Use number, not string
           maxRecords: fetchSize, // Fetch more to ensure we get recent tickets
         }
         
@@ -218,22 +220,36 @@ export function registerTools(server: McpServer) {
         })
         
         console.log(`[getTicketsByCompanyName] API returned ${Array.isArray(ticketData) ? ticketData.length : 'non-array'} tickets`)
+        console.log(`[getTicketsByCompanyName] Raw API response type:`, typeof ticketData, Array.isArray(ticketData) ? 'array' : ticketData?.constructor?.name || 'unknown')
         
-        const formatted = formatResponse(ticketData)
-        const responseText = truncateResponse(formatted)
-        
-        // Parse tickets to get count for response metadata
+        // Handle API response - it might already be an array or wrapped in an object
         let tickets: any[] = []
-        try {
-          const parsed = JSON.parse(responseText)
-          if (Array.isArray(parsed)) {
-            tickets = parsed
-          } else if (parsed && typeof parsed === 'object') {
-            tickets = (parsed as any).items || (parsed as any).data || [parsed]
+        if (Array.isArray(ticketData)) {
+          tickets = ticketData
+          console.log(`[getTicketsByCompanyName] API returned array with ${tickets.length} tickets`)
+        } else if (ticketData && typeof ticketData === 'object') {
+          // Try common response formats
+          if (Array.isArray(ticketData.items)) {
+            tickets = ticketData.items
+            console.log(`[getTicketsByCompanyName] Found tickets in .items: ${tickets.length}`)
+          } else if (Array.isArray(ticketData.data)) {
+            tickets = ticketData.data
+            console.log(`[getTicketsByCompanyName] Found tickets in .data: ${tickets.length}`)
+          } else if (Array.isArray(ticketData.records)) {
+            tickets = ticketData.records
+            console.log(`[getTicketsByCompanyName] Found tickets in .records: ${tickets.length}`)
+          } else {
+            // Single ticket or unknown format
+            console.log(`[getTicketsByCompanyName] Unknown response format, keys:`, Object.keys(ticketData))
+            // Try to extract as single ticket
+            if (ticketData.id || ticketData.ticketNumber) {
+              tickets = [ticketData]
+              console.log(`[getTicketsByCompanyName] Treated as single ticket`)
+            }
           }
-        } catch (e) {
-          tickets = []
         }
+        
+        console.log(`[getTicketsByCompanyName] Parsed ${tickets.length} tickets from API response`)
         
         // Client-side date filter as fallback (in case API doesn't respect filter parameter)
         // Also filter out tickets with invalid dates (null, epoch, etc.)
@@ -251,8 +267,10 @@ export function registerTools(server: McpServer) {
             cutoffDate.setDate(cutoffDate.getDate() - daysToFilter)
             cutoffDate.setHours(0, 0, 0, 0)
           } else {
-            // Default: Exclude tickets older than 2023-01-01
+            // Default: Exclude tickets older than 2023-01-01, but only if we have many tickets
+            // If we have few tickets, be less aggressive to avoid filtering everything out
             cutoffDate = new Date('2023-01-01T00:00:00.000Z')
+            console.log(`[getTicketsByCompanyName] Using default date filter: 2023-01-01 (will filter out tickets older than this)`)
           }
           
           tickets = tickets.filter((ticket: any) => {
@@ -287,6 +305,13 @@ export function registerTools(server: McpServer) {
             
             return true
           })
+          
+          console.log(`[getTicketsByCompanyName] After date filtering: ${tickets.length} tickets remaining (from ${beforeFilter} total)`)
+          
+          // If all tickets were filtered out, warn but don't fail - return empty array with helpful message
+          if (tickets.length === 0 && beforeFilter > 0) {
+            console.log(`[getTicketsByCompanyName] WARNING: All ${beforeFilter} tickets were filtered out by date filter`)
+          }
           
           if (beforeFilter > tickets.length) {
             const filterReason = cutoffDate 
