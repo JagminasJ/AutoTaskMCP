@@ -983,6 +983,11 @@ export function registerTools(server: McpServer) {
             : daysToFilter !== undefined && daysToFilter > 0 
               ? `Last ${daysToFilter} days (filtered by createDate)` 
               : 'Default filter: tickets from 2025-01-01 onwards (this year only)',
+          statusFilter: input.status !== undefined 
+            ? `Status = ${input.status}` 
+            : input.excludeStatus && input.excludeStatus.length > 0
+              ? `Excluding status: ${input.excludeStatus.join(', ')} (open tickets only)`
+              : 'No status filter',
           dueDateFilter: input.dueDateBefore 
             ? `Due date before ${input.dueDateBefore}` 
             : input.dueDateAfter 
@@ -992,7 +997,7 @@ export function registerTools(server: McpServer) {
         }
         
         // Apply truncateResponse to ensure we don't exceed size limits
-        const responseText = truncateResponse(responseData, 40000) // More conservative limit
+        const responseText = truncateResponse(responseData, 35000) // More conservative limit for Copilot Studio
         
         return {
           content: [
