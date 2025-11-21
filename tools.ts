@@ -187,21 +187,48 @@ export function registerTools(server: McpServer) {
         
         // Step 2: Query tickets by company ID with automatic date filtering and sorting
         const ticketsUrl = `https://webservices15.autotask.net/ATServicesRest/V1.0/Tickets/query`
-        // Fetch MANY more records than requested to ensure we get the most recent ones
-        // Try server-side sorting first, but also sort client-side as fallback
-        // Fetch at least 1000 tickets to ensure we get recent ones even if API doesn't sort correctly
-        const fetchSize = Math.max((input.maxRecords || 5) * 200, 1000)
+        // Autotask API has a max of 500 records per query
+        // Fetch the maximum to ensure we get recent tickets
+        const fetchSize = 500
         const ticketBody: any = {
           filter: [{ field: 'companyID', op: 'eq', value: companyIdNum }], // Use number, not string
-          maxRecords: fetchSize, // Fetch many more to ensure we get recent tickets
+          maxRecords: fetchSize, // Max allowed by Autotask API
         }
         
-        // Note: We do NOT filter by lastActivityDate on the server side because:
-        // 1. The Autotask API may not support filtering on lastActivityDate
-        // 2. We'll do all date filtering client-side after fetching tickets
-        // This ensures we get tickets even if the API doesn't support the date filter
+        // Add date filter - default to 2025-01-01 to ensure we only get tickets from this year
+        // If daysAgo is explicitly provided, use that instead
+        // If daysAgo is explicitly 0, don't filter (return all tickets)
         const daysToFilter = input.daysAgo
-        console.log(`[getTicketsByCompanyName] No server-side date filter (will filter client-side). daysAgo: ${daysToFilter}`)
+        if (daysToFilter === 0) {
+          // Explicitly requested no filter
+          console.log(`[getTicketsByCompanyName] No date filter applied (daysAgo=0)`)
+        } else if (daysToFilter !== undefined && daysToFilter > 0) {
+          // User specified a time period
+          const cutoffDate = new Date()
+          cutoffDate.setDate(cutoffDate.getDate() - daysToFilter)
+          cutoffDate.setHours(0, 0, 0, 0)
+          const cutoffDateStr = cutoffDate.toISOString()
+          
+          console.log(`[getTicketsByCompanyName] Filtering tickets: createDate >= ${cutoffDateStr} (last ${daysToFilter} days)`)
+          
+          ticketBody.filter.push({
+            field: 'createDate',
+            op: 'gte',
+            value: cutoffDateStr,
+          })
+        } else {
+          // Default: Only get tickets from 2025-01-01 onwards (this year)
+          const defaultCutoffDate = new Date('2025-01-01T00:00:00.000Z')
+          const defaultCutoffDateStr = defaultCutoffDate.toISOString()
+          
+          console.log(`[getTicketsByCompanyName] Applying default date filter: createDate >= ${defaultCutoffDateStr} (tickets from 2025 onwards)`)
+          
+          ticketBody.filter.push({
+            field: 'createDate',
+            op: 'gte',
+            value: defaultCutoffDateStr,
+          })
+        }
         
         // Try server-side sorting by createDate DESC - the Autotask API should support this
         // We'll also sort client-side as a fallback to ensure correct order
@@ -271,10 +298,9 @@ export function registerTools(server: McpServer) {
             cutoffDate.setDate(cutoffDate.getDate() - daysToFilter)
             cutoffDate.setHours(0, 0, 0, 0)
           } else {
-            // Default: Exclude tickets older than 2023-01-01, but only if we have many tickets
-            // If we have few tickets, be less aggressive to avoid filtering everything out
-            cutoffDate = new Date('2023-01-01T00:00:00.000Z')
-            console.log(`[getTicketsByCompanyName] Using default date filter: 2023-01-01 (will filter out tickets older than this)`)
+            // Default: Only get tickets from 2025-01-01 onwards (this year)
+            cutoffDate = new Date('2025-01-01T00:00:00.000Z')
+            console.log(`[getTicketsByCompanyName] Using default date filter: 2025-01-01 (will filter out tickets older than this)`)
           }
           
           tickets = tickets.filter((ticket: any) => {
@@ -323,7 +349,7 @@ export function registerTools(server: McpServer) {
             const filterReason = cutoffDate 
               ? (daysToFilter !== undefined && daysToFilter > 0 
                   ? `older than ${daysToFilter} days` 
-                  : 'older than 2023-01-01 (default filter)')
+                  : 'older than 2025-01-01 (default filter - this year only)')
               : 'with invalid dates'
             console.log(`[getTicketsByCompanyName] Client-side filter removed ${beforeFilter - tickets.length} tickets (${filterReason})`)
           }
@@ -414,8 +440,8 @@ export function registerTools(server: McpServer) {
                   dateFilter: input.daysAgo === 0 
                     ? 'No date filter (explicitly requested)' 
                     : input.daysAgo !== undefined && input.daysAgo > 0 
-                      ? `Last ${input.daysAgo} days (filtered client-side by lastActivityDate)` 
-                      : 'Default filter: tickets from 2023-01-01 onwards (filtered client-side, excludes very old/invalid dates)',
+                      ? `Last ${input.daysAgo} days (filtered by createDate)` 
+                      : 'Default filter: tickets from 2025-01-01 onwards (this year only)',
                   dateRange: tickets.length > 0 ? (() => {
                     // Only use valid dates (not null, not epoch, not invalid)
                     const dates = tickets.map((t: any) => {
