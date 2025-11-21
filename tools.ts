@@ -16,7 +16,7 @@ export function registerTools(server: McpServer) {
     `PRIMARY TOOL for tickets by company name. Use this when user asks for tickets from a company (e.g., "show me tickets for Company Name", "latest 5 tickets for Company Name", "recent tickets for Company Name"). This tool AUTOMATICALLY handles everything: finds the company, queries tickets, sorts by date (most recent first), and returns ACTUAL TICKET DETAILS. For "most recent" or "latest" queries, DO NOT set daysAgo - leave it undefined. The tool will return ALL tickets sorted by date (most recent first). Only use daysAgo when user explicitly mentions a time period (e.g., "last 30 days", "last month", "last year"). DO NOT use ticketsQueryCount - that returns only a number and cannot filter by company name. DO NOT enumerate or count tickets - this tool already returns the most recent tickets sorted by date. The tool handles all filtering and sorting server-side, so you get the most recent tickets directly without needing to count or paginate.`,
     {
       companyName: z.string().describe('The name of the company to search for'),
-      maxRecords: z.number().max(100).optional().describe('Number of tickets to return (default: 50, max: 100). The tool automatically sorts by date DESC, so this returns the N most recent tickets.'),
+      maxRecords: z.number().max(100).optional().describe('Number of tickets to return (default: 20, max: 100). The tool automatically sorts by date DESC, so this returns the N most recent tickets. Use smaller values (10-20) to avoid response size limits.'),
       sortByDate: z.boolean().optional().describe('Sort by createDate descending (default: true). When true, returns most recently created tickets first.'),
       daysAgo: z.number().optional().describe('ONLY use when user explicitly mentions a time period (e.g., "last 30 days" = 30, "last month" = 30, "last year" = 365). For "most recent" or "latest" queries without a time period, DO NOT set this parameter - leave it undefined. The tool will return all tickets sorted by date (most recent first) without any date filtering.'),
     },
@@ -419,88 +419,99 @@ export function registerTools(server: McpServer) {
           }
           
           // After sorting, take only the requested number of tickets (most recent first)
-          const requestedCount = input.maxRecords || 5
+          const requestedCount = input.maxRecords || 20
           if (tickets.length > requestedCount) {
             console.log(`[getTicketsByCompanyName] Taking top ${requestedCount} tickets from ${tickets.length} sorted tickets`)
             tickets = tickets.slice(0, requestedCount)
           }
         }
         
+        // Truncate large fields in tickets to reduce response size
+        const truncatedTickets = tickets.map((ticket: any) => {
+          const truncated: any = { ...ticket }
+          // Truncate description field if it's too long (common source of large responses)
+          if (truncated.description && typeof truncated.description === 'string' && truncated.description.length > 500) {
+            truncated.description = truncated.description.substring(0, 500) + '... [truncated]'
+          }
+          return truncated
+        })
+        
+        const responseData = {
+          companyName: input.companyName,
+          companyID: companyId,
+          totalTicketsReturned: truncatedTickets.length,
+          maxRecordsRequested: input.maxRecords || 20,
+          sortedBy: input.sortByDate !== false ? 'createDate DESC (most recently created first, client-side sorted)' : 'none',
+          dateFilter: input.daysAgo === 0 
+            ? 'No date filter (explicitly requested)' 
+            : input.daysAgo !== undefined && input.daysAgo > 0 
+              ? `Last ${input.daysAgo} days (filtered by createDate)` 
+              : 'Default filter: tickets from 2025-01-01 onwards (this year only)',
+          dateRange: truncatedTickets.length > 0 ? (() => {
+            // Only use valid dates (not null, not epoch, not invalid)
+            const dates = truncatedTickets.map((t: any) => {
+              // Try createDate first (when ticket was created)
+              if (t.createDate) {
+                const d = new Date(t.createDate)
+                if (!isNaN(d.getTime()) && d.getTime() > 0) return d
+              }
+              // Fall back to lastActivityDate
+              if (t.lastActivityDate) {
+                const d = new Date(t.lastActivityDate)
+                if (!isNaN(d.getTime()) && d.getTime() > 0) return d
+              }
+              return null
+            }).filter((d): d is Date => d !== null && d.getTime() > 0)
+            
+            if (dates.length === 0) return 'No valid dates found'
+            dates.sort((a, b) => b.getTime() - a.getTime())
+            const newest = dates[0]
+            const oldest = dates[dates.length - 1]
+            const daysSinceNewest = Math.floor((Date.now() - newest.getTime()) / (1000 * 60 * 60 * 24))
+            return {
+              newest: newest.toISOString().split('T')[0],
+              oldest: oldest.toISOString().split('T')[0],
+              daysSinceNewest: daysSinceNewest,
+              warning: daysSinceNewest > 180 ? `Most recent ticket is ${daysSinceNewest} days old. Consider using a smaller daysAgo value (e.g., 90, 180) to see more recent tickets if they exist.` : null
+            }
+          })() : null,
+          note: truncatedTickets.length > 0 ? (() => {
+            // Get the first ticket's date (should be most recent after sorting)
+            const firstTicket = truncatedTickets[0]
+            let newestDate: Date | null = null
+            
+            // Prefer createDate (when ticket was created)
+            if (firstTicket?.createDate) {
+              const d = new Date(firstTicket.createDate)
+              if (!isNaN(d.getTime()) && d.getTime() > 0) newestDate = d
+            }
+            // Fall back to lastActivityDate
+            if (!newestDate && firstTicket?.lastActivityDate) {
+              const d = new Date(firstTicket.lastActivityDate)
+              if (!isNaN(d.getTime()) && d.getTime() > 0) newestDate = d
+            }
+            
+            if (!newestDate) {
+              return 'WARNING: Could not determine ticket dates. Some tickets may have invalid or missing date fields.'
+            }
+            
+            const daysSinceNewest = Math.floor((Date.now() - newestDate.getTime()) / (1000 * 60 * 60 * 24))
+            if (daysSinceNewest > 180) {
+              return `WARNING: The most recent ticket is ${daysSinceNewest} days old (from ${newestDate.toISOString().split('T')[0]}). These may be the only tickets for this company, or you may want to try a smaller daysAgo value to check for more recent tickets. Tickets are automatically sorted by date (client-side fallback ensures correct order).`
+            }
+            return 'These are the most recent tickets automatically sorted by date (client-side fallback ensures correct order). No counting or enumeration needed - the tool handles all filtering server-side.'
+          })() : 'No tickets found in the specified date range.',
+          tickets: truncatedTickets,
+        }
+        
+        // Apply truncateResponse to ensure we don't exceed size limits
+        const responseText = truncateResponse(responseData, 45000) // Slightly under 50KB to be safe
+        
         return {
           content: [
             {
               type: 'text',
-              text: JSON.stringify(
-                {
-                  companyName: input.companyName,
-                  companyID: companyId,
-                  totalTicketsReturned: tickets.length,
-                  maxRecordsRequested: input.maxRecords || 50,
-                  sortedBy: input.sortByDate !== false ? 'createDate DESC (most recently created first, client-side sorted)' : 'none',
-                  dateFilter: input.daysAgo === 0 
-                    ? 'No date filter (explicitly requested)' 
-                    : input.daysAgo !== undefined && input.daysAgo > 0 
-                      ? `Last ${input.daysAgo} days (filtered by createDate)` 
-                      : 'Default filter: tickets from 2025-01-01 onwards (this year only)',
-                  dateRange: tickets.length > 0 ? (() => {
-                    // Only use valid dates (not null, not epoch, not invalid)
-                    const dates = tickets.map((t: any) => {
-                      // Try createDate first (when ticket was created)
-                      if (t.createDate) {
-                        const d = new Date(t.createDate)
-                        if (!isNaN(d.getTime()) && d.getTime() > 0) return d
-                      }
-                      // Fall back to lastActivityDate
-                      if (t.lastActivityDate) {
-                        const d = new Date(t.lastActivityDate)
-                        if (!isNaN(d.getTime()) && d.getTime() > 0) return d
-                      }
-                      return null
-                    }).filter((d): d is Date => d !== null && d.getTime() > 0)
-                    
-                    if (dates.length === 0) return 'No valid dates found'
-                    dates.sort((a, b) => b.getTime() - a.getTime())
-                    const newest = dates[0]
-                    const oldest = dates[dates.length - 1]
-                    const daysSinceNewest = Math.floor((Date.now() - newest.getTime()) / (1000 * 60 * 60 * 24))
-                    return {
-                      newest: newest.toISOString().split('T')[0],
-                      oldest: oldest.toISOString().split('T')[0],
-                      daysSinceNewest: daysSinceNewest,
-                      warning: daysSinceNewest > 180 ? `Most recent ticket is ${daysSinceNewest} days old. Consider using a smaller daysAgo value (e.g., 90, 180) to see more recent tickets if they exist.` : null
-                    }
-                  })() : null,
-                  note: tickets.length > 0 ? (() => {
-                    // Get the first ticket's date (should be most recent after sorting)
-                    const firstTicket = tickets[0]
-                    let newestDate: Date | null = null
-                    
-                    // Prefer createDate (when ticket was created)
-                    if (firstTicket?.createDate) {
-                      const d = new Date(firstTicket.createDate)
-                      if (!isNaN(d.getTime()) && d.getTime() > 0) newestDate = d
-                    }
-                    // Fall back to lastActivityDate
-                    if (!newestDate && firstTicket?.lastActivityDate) {
-                      const d = new Date(firstTicket.lastActivityDate)
-                      if (!isNaN(d.getTime()) && d.getTime() > 0) newestDate = d
-                    }
-                    
-                    if (!newestDate) {
-                      return 'WARNING: Could not determine ticket dates. Some tickets may have invalid or missing date fields.'
-                    }
-                    
-                    const daysSinceNewest = Math.floor((Date.now() - newestDate.getTime()) / (1000 * 60 * 60 * 24))
-                    if (daysSinceNewest > 180) {
-                      return `WARNING: The most recent ticket is ${daysSinceNewest} days old (from ${newestDate.toISOString().split('T')[0]}). These may be the only tickets for this company, or you may want to try a smaller daysAgo value to check for more recent tickets. Tickets are automatically sorted by date (client-side fallback ensures correct order).`
-                    }
-                    return 'These are the most recent tickets automatically sorted by date (client-side fallback ensures correct order). No counting or enumeration needed - the tool handles all filtering server-side.'
-                  })() : 'No tickets found in the specified date range.',
-                  tickets: tickets,
-                },
-                null,
-                2,
-              ),
+              text: responseText,
             },
           ],
         }
