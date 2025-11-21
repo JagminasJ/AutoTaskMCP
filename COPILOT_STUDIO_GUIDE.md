@@ -136,14 +136,14 @@ When users ask questions, translate them to tools and queries:
 
 | User Question Pattern | Use Tool | Query Approach |
 |----------------------|----------|---------------|
-| "How many tickets..." | ticketsQueryCount | Filter by criteria, no maxRecords needed |
-| "Show me tickets for [Company]" | ticketsQuery | Filter by companyID, maxRecords: 20-50 |
+| "How many tickets..." | ticketsQueryCount | Filter by criteria, maxRecords not needed |
+| "Show me tickets for [Company]" | ticketsQuery | Filter by companyID, set maxRecords to 20-50 |
 | "What's the status of ticket [X]" | ticketsQueryItem | Use ticket ID or number |
-| "Recent tickets" or "Latest tickets" | ticketsQuery | Filter by createDate (last 7-30 days), sort DESC, maxRecords: 10-20 |
-| "Tickets by priority [X]" | ticketsQuery | Filter by priority field, maxRecords: 20 |
-| "Tickets in category [X]" | ticketsQuery | Filter by categoryID, maxRecords: 20 |
-| "Tickets for contact [X]" | ticketsQuery | Filter by contactID, maxRecords: 20 |
-| "Open tickets" or "Closed tickets" | ticketsQuery | Filter by status field, maxRecords: 20 |
+| "Recent tickets" or "Latest tickets" | ticketsQuery | Filter by createDate (last 7-30 days), sort DESC, set maxRecords to 10-20 |
+| "Tickets by priority [X]" | ticketsQuery | Filter by priority field, set maxRecords to 20 |
+| "Tickets in category [X]" | ticketsQuery | Filter by categoryID, set maxRecords to 20 |
+| "Tickets for contact [X]" | ticketsQuery | Filter by contactID, set maxRecords to 20 |
+| "Open tickets" or "Closed tickets" | ticketsQuery | Filter by status field, set maxRecords to 20 |
 ```
 
 ## Monitoring and Troubleshooting
@@ -162,6 +162,12 @@ When users ask questions, translate them to tools and queries:
 2. **Agent not using correct tool**
    - Solution: Improve tool descriptions in system message
    - Add examples in conversation starters
+
+3. **"Unexpected characters" or "ContentValidationError" with colon**
+   - Solution: This usually happens when Copilot Studio interprets colons in tool descriptions or JSON as formula syntax
+   - Ensure tool descriptions don't use colons in formula-like patterns (use "is" or "equals" instead of ":")
+   - When constructing JSON in tool calls, use proper JSON syntax without formula-like expressions
+   - If error persists, check Power Automate flows for any expressions that might be parsing tool responses incorrectly
 
 3. **Slow responses**
    - Solution: Use more specific filters

@@ -1637,7 +1637,7 @@ export function registerTools(server: McpServer) {
   )
   server.tool(
     'ticketsQuery',
-    `Query tickets with filters, sorting, and pagination. Use this for complex queries about tickets, their status, priority, categories, companies, contacts, or service calls. Always include maxRecords (default: 20, max: 100) to limit response size. Returns ticket information including ID, number, title, status, priority, company, contact, dates, and category.`,
+    `Query tickets with filters, sorting, and pagination. Use this for complex queries about tickets, their status, priority, categories, companies, contacts, or service calls. Always include maxRecords parameter (default is 20, maximum is 100) to limit response size. Returns ticket information including ID, number, title, status, priority, company, contact, dates, and category.`,
     {
       body: z.object({
         filter: z.array(z.any()).optional(),
@@ -1674,7 +1674,7 @@ export function registerTools(server: McpServer) {
                   error: 'Failed to query tickets',
                   message: msg,
                   suggestion:
-                    'Check your filters and ensure maxRecords is set (recommended: 20-50)',
+                    'Check your filters and ensure maxRecords is set (recommended range is 20 to 50)',
                 },
                 null,
                 2,
