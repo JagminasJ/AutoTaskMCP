@@ -13,12 +13,12 @@ export function registerTools(server: McpServer) {
   // PRIMARY TOOL - Place at top for visibility
   server.tool(
     'getTicketsByCompanyName',
-    `PRIMARY TOOL for tickets by company name. Use this when user asks for tickets from a company (e.g., "show me tickets for Company Name", "latest 5 tickets for Company Name", "recent tickets for Company Name"). This tool AUTOMATICALLY handles everything: finds the company, queries tickets, sorts by date (most recent first), and returns ACTUAL TICKET DETAILS. For "most recent" or "latest" queries, the tool automatically filters to the last 90 days to ensure you get truly recent tickets. Use daysAgo parameter to override this (e.g., 30 for last month, 180 for last 6 months). DO NOT use ticketsQueryCount - that returns only a number and cannot filter by company name. DO NOT enumerate or count tickets - this tool already returns the most recent tickets sorted by date. The tool handles all filtering and sorting server-side, so you get the most recent tickets directly without needing to count or paginate.`,
+    `PRIMARY TOOL for tickets by company name. Use this when user asks for tickets from a company (e.g., "show me tickets for Company Name", "latest 5 tickets for Company Name", "recent tickets for Company Name"). This tool AUTOMATICALLY handles everything: finds the company, queries tickets, sorts by date (most recent first), and returns ACTUAL TICKET DETAILS. For "most recent" or "latest" queries, DO NOT set daysAgo - leave it undefined. The tool automatically uses a 30-day window to ensure truly recent tickets. Only use daysAgo when user explicitly mentions a time period (e.g., "last 30 days", "last month", "last year"). DO NOT use ticketsQueryCount - that returns only a number and cannot filter by company name. DO NOT enumerate or count tickets - this tool already returns the most recent tickets sorted by date. The tool handles all filtering and sorting server-side, so you get the most recent tickets directly without needing to count or paginate.`,
     {
       companyName: z.string().describe('The name of the company to search for'),
       maxRecords: z.number().max(100).optional().describe('Number of tickets to return (default: 50, max: 100). The tool automatically sorts by date DESC, so this returns the N most recent tickets.'),
       sortByDate: z.boolean().optional().describe('Sort by lastActivityDate descending (default: true). When true, returns most recent tickets first.'),
-      daysAgo: z.number().optional().describe('Optional: Number of days to look back. For "most recent" or "latest" queries without a time period, leave undefined (defaults to 90 days to ensure recent tickets). Only specify when user explicitly mentions a time period (e.g., "last 30 days" = 30, "last month" = 30, "last year" = 365).'),
+      daysAgo: z.number().optional().describe('ONLY use when user explicitly mentions a time period (e.g., "last 30 days" = 30, "last month" = 30, "last year" = 365). For "most recent" or "latest" queries without a time period, DO NOT set this parameter - leave it undefined. The tool will automatically use a 30-day window to get truly recent tickets.'),
     },
     async (input, extra) => {
       try {
@@ -190,10 +190,10 @@ export function registerTools(server: McpServer) {
           maxRecords: input.maxRecords || 50, // Increased default to 50 for better results
         }
         
-        // Add date filter - default to 90 days for "most recent" queries to ensure we get recent tickets
+        // Add date filter - default to 30 days for "most recent" queries to ensure we get truly recent tickets
         // If daysAgo is explicitly 0, don't filter (return all tickets)
-        // If daysAgo is undefined, use 90 days as default for "most recent" queries
-        const daysToFilter = input.daysAgo !== undefined ? input.daysAgo : 90
+        // If daysAgo is undefined, use 30 days as default for "most recent" queries
+        const daysToFilter = input.daysAgo !== undefined ? input.daysAgo : 30
         if (daysToFilter > 0) {
           const cutoffDate = new Date()
           cutoffDate.setDate(cutoffDate.getDate() - daysToFilter)
