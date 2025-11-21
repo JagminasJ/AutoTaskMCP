@@ -17,7 +17,7 @@ export function registerTools(server: McpServer) {
     {
       companyName: z.string().describe('The name of the company to search for'),
       maxRecords: z.number().max(100).optional().describe('Number of tickets to return (default: 50, max: 100). The tool automatically sorts by date DESC, so this returns the N most recent tickets.'),
-      sortByDate: z.boolean().optional().describe('Sort by lastActivityDate descending (default: true). When true, returns most recent tickets first.'),
+      sortByDate: z.boolean().optional().describe('Sort by createDate descending (default: true). When true, returns most recently created tickets first.'),
       daysAgo: z.number().optional().describe('ONLY use when user explicitly mentions a time period (e.g., "last 30 days" = 30, "last month" = 30, "last year" = 365). For "most recent" or "latest" queries without a time period, DO NOT set this parameter - leave it undefined. The tool will return all tickets sorted by date (most recent first) without any date filtering.'),
     },
     async (input, extra) => {
@@ -207,7 +207,7 @@ export function registerTools(server: McpServer) {
         // DON'T rely on server-side sort - the API might not respect it or might return ASC
         // We'll fetch a large sample and sort client-side to ensure correct order
         // Remove sort from request to avoid API potentially returning in wrong order
-        console.log(`[getTicketsByCompanyName] No server-side sort (will sort client-side by lastActivityDate DESC)`)
+        console.log(`[getTicketsByCompanyName] No server-side sort (will sort client-side by createDate DESC)`)
         
         // DON'T use enforceMaxRecords here - we need to fetch many tickets (500+) to ensure we get recent ones
         // even if the API returns them in ASC order (oldest first)
@@ -277,18 +277,20 @@ export function registerTools(server: McpServer) {
           }
           
           tickets = tickets.filter((ticket: any) => {
-            // Get the ticket's date (prefer lastActivityDate, fallback to createDate)
+            // Get the ticket's date (prefer createDate for "most recent" queries, fallback to lastActivityDate)
+            // createDate represents when the ticket was actually created, which is better for "most recent" queries
             let ticketDate: Date | null = null
             
-            if (ticket.lastActivityDate) {
-              const d = new Date(ticket.lastActivityDate)
+            if (ticket.createDate) {
+              const d = new Date(ticket.createDate)
               if (!isNaN(d.getTime()) && d.getTime() > 0) {
                 ticketDate = d
               }
             }
             
-            if (!ticketDate && ticket.createDate) {
-              const d = new Date(ticket.createDate)
+            // Fall back to lastActivityDate if createDate is not available
+            if (!ticketDate && ticket.lastActivityDate) {
+              const d = new Date(ticket.lastActivityDate)
               if (!isNaN(d.getTime()) && d.getTime() > 0) {
                 ticketDate = d
               }
@@ -296,7 +298,7 @@ export function registerTools(server: McpServer) {
             
             // If no valid date, exclude the ticket (invalid/epoch dates)
             if (!ticketDate) {
-              console.log(`[getTicketsByCompanyName] Filtered out ticket ${ticket.id}: no valid date field (lastActivityDate: ${ticket.lastActivityDate}, createDate: ${ticket.createDate})`)
+              console.log(`[getTicketsByCompanyName] Filtered out ticket ${ticket.id}: no valid date field (createDate: ${ticket.createDate}, lastActivityDate: ${ticket.lastActivityDate})`)
               return false
             }
             
@@ -343,18 +345,20 @@ export function registerTools(server: McpServer) {
           
           tickets.sort((a: any, b: any) => {
             // Try multiple date fields in order of preference
+            // For "most recent" queries, prioritize createDate (when ticket was created)
+            // over lastActivityDate (which can be updated on old tickets)
             const getDate = (ticket: any): Date | null => {
-              // Try lastActivityDate first (most recent activity)
-              if (ticket.lastActivityDate) {
-                const d = new Date(ticket.lastActivityDate)
-                if (!isNaN(d.getTime())) return d
-              }
-              // Fall back to createDate
+              // Try createDate first (when ticket was actually created - best for "most recent")
               if (ticket.createDate) {
                 const d = new Date(ticket.createDate)
                 if (!isNaN(d.getTime())) return d
               }
-              // Try dateLastModified
+              // Fall back to lastActivityDate (most recent activity)
+              if (ticket.lastActivityDate) {
+                const d = new Date(ticket.lastActivityDate)
+                if (!isNaN(d.getTime())) return d
+              }
+              // Try dateLastModified as last resort
               if (ticket.dateLastModified) {
                 const d = new Date(ticket.dateLastModified)
                 if (!isNaN(d.getTime())) return d
@@ -405,7 +409,7 @@ export function registerTools(server: McpServer) {
                   companyID: companyId,
                   totalTicketsReturned: tickets.length,
                   maxRecordsRequested: input.maxRecords || 50,
-                  sortedBy: input.sortByDate !== false ? 'lastActivityDate DESC (most recent first, client-side sorted)' : 'none',
+                  sortedBy: input.sortByDate !== false ? 'createDate DESC (most recently created first, client-side sorted)' : 'none',
                   dateFilter: input.daysAgo === 0 
                     ? 'No date filter (explicitly requested)' 
                     : input.daysAgo !== undefined && input.daysAgo > 0 
@@ -414,14 +418,14 @@ export function registerTools(server: McpServer) {
                   dateRange: tickets.length > 0 ? (() => {
                     // Only use valid dates (not null, not epoch, not invalid)
                     const dates = tickets.map((t: any) => {
-                      // Try lastActivityDate first
-                      if (t.lastActivityDate) {
-                        const d = new Date(t.lastActivityDate)
-                        if (!isNaN(d.getTime()) && d.getTime() > 0) return d
-                      }
-                      // Fall back to createDate
+                      // Try createDate first (when ticket was created)
                       if (t.createDate) {
                         const d = new Date(t.createDate)
+                        if (!isNaN(d.getTime()) && d.getTime() > 0) return d
+                      }
+                      // Fall back to lastActivityDate
+                      if (t.lastActivityDate) {
+                        const d = new Date(t.lastActivityDate)
                         if (!isNaN(d.getTime()) && d.getTime() > 0) return d
                       }
                       return null
@@ -444,12 +448,14 @@ export function registerTools(server: McpServer) {
                     const firstTicket = tickets[0]
                     let newestDate: Date | null = null
                     
-                    if (firstTicket?.lastActivityDate) {
-                      const d = new Date(firstTicket.lastActivityDate)
+                    // Prefer createDate (when ticket was created)
+                    if (firstTicket?.createDate) {
+                      const d = new Date(firstTicket.createDate)
                       if (!isNaN(d.getTime()) && d.getTime() > 0) newestDate = d
                     }
-                    if (!newestDate && firstTicket?.createDate) {
-                      const d = new Date(firstTicket.createDate)
+                    // Fall back to lastActivityDate
+                    if (!newestDate && firstTicket?.lastActivityDate) {
+                      const d = new Date(firstTicket.lastActivityDate)
                       if (!isNaN(d.getTime()) && d.getTime() > 0) newestDate = d
                     }
                     
