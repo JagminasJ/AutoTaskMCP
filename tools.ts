@@ -467,52 +467,7 @@ export function registerTools(server: McpServer) {
       }
     },
   )
-  server.tool(
-    'ticketCategoriesQueryFieldDefinitions',
-    `Generated from Postman`,
-    {},
-    async () => {
-      try {
-        const baseUrl = `https://webservices15.autotask.net/ATServicesRest/V1.0/TicketCategories/entityInformation/fields`
-        const data = await callApi(baseUrl, {
-          method: 'GET',
-          headers: getAutotaskHeaders(),
-        })
-        return {
-          content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
-        }
-      } catch (error) {
-        const msg = error instanceof Error ? error.message : String(error)
-        return {
-          content: [{ type: 'text', text: `Error: ${msg}` }],
-          isError: true,
-        }
-      }
-    },
-  )
-  server.tool(
-    'ticketCategoriesQueryUserDefinedFieldDefinitions',
-    `Generated from Postman`,
-    {},
-    async () => {
-      try {
-        const baseUrl = `https://webservices15.autotask.net/ATServicesRest/V1.0/TicketCategories/entityInformation/userDefinedFields`
-        const data = await callApi(baseUrl, {
-          method: 'GET',
-          headers: getAutotaskHeaders(),
-        })
-        return {
-          content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
-        }
-      } catch (error) {
-        const msg = error instanceof Error ? error.message : String(error)
-        return {
-          content: [{ type: 'text', text: `Error: ${msg}` }],
-          isError: true,
-        }
-      }
-    },
-  )
+  // Removed: ticketCategoriesQueryFieldDefinitions, ticketCategoriesQueryUserDefinedFieldDefinitions, ticketCategoriesQueryEntityInformation (metadata queries not needed)
   server.tool(
     'ticketCategoriesQueryEntityInformation',
     `Generated from Postman`,
@@ -559,75 +514,7 @@ export function registerTools(server: McpServer) {
       }
     },
   )
-  server.tool(
-    'ticketCategoryFieldDefaultsChildQueryFieldDefinitions',
-    `Generated from Postman`,
-    { parentId: z.string() },
-    async (input, extra) => {
-      try {
-        const baseUrl = `https://webservices15.autotask.net/ATServicesRest/V1.0/TicketCategories/${input.parentId}/FieldDefaults/entityInformation/fields`
-        const data = await callApi(baseUrl, {
-          method: 'GET',
-          headers: getAutotaskHeaders(),
-        })
-        return {
-          content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
-        }
-      } catch (error) {
-        const msg = error instanceof Error ? error.message : String(error)
-        return {
-          content: [{ type: 'text', text: `Error: ${msg}` }],
-          isError: true,
-        }
-      }
-    },
-  )
-  server.tool(
-    'ticketCategoryFieldDefaultsChildQueryUserDefinedFieldDefinitions',
-    `Generated from Postman`,
-    { parentId: z.string() },
-    async (input, extra) => {
-      try {
-        const baseUrl = `https://webservices15.autotask.net/ATServicesRest/V1.0/TicketCategories/${input.parentId}/FieldDefaults/entityInformation/userDefinedFields`
-        const data = await callApi(baseUrl, {
-          method: 'GET',
-          headers: getAutotaskHeaders(),
-        })
-        return {
-          content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
-        }
-      } catch (error) {
-        const msg = error instanceof Error ? error.message : String(error)
-        return {
-          content: [{ type: 'text', text: `Error: ${msg}` }],
-          isError: true,
-        }
-      }
-    },
-  )
-  server.tool(
-    'ticketCategoryFieldDefaultsChildQueryEntityInformation',
-    `Generated from Postman`,
-    { parentId: z.string() },
-    async (input, extra) => {
-      try {
-        const baseUrl = `https://webservices15.autotask.net/ATServicesRest/V1.0/TicketCategories/${input.parentId}/FieldDefaults/entityInformation`
-        const data = await callApi(baseUrl, {
-          method: 'GET',
-          headers: getAutotaskHeaders(),
-        })
-        return {
-          content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
-        }
-      } catch (error) {
-        const msg = error instanceof Error ? error.message : String(error)
-        return {
-          content: [{ type: 'text', text: `Error: ${msg}` }],
-          isError: true,
-        }
-      }
-    },
-  )
+  // Removed: ticketCategoryFieldDefaultsChildQueryFieldDefinitions, ticketCategoryFieldDefaultsChildQueryUserDefinedFieldDefinitions, ticketCategoryFieldDefaultsChildQueryEntityInformation (metadata queries not needed)
   server.tool(
     'ticketCategoryFieldDefaultsChildQuery',
     `Generated from Postman`,
@@ -651,54 +538,7 @@ export function registerTools(server: McpServer) {
       }
     },
   )
-  server.tool(
-    'ticketCategoriesUpdateEntity',
-    `Generated from Postman`,
-    { body: z.any() },
-    async (input, extra) => {
-      try {
-        const baseUrl = `https://webservices15.autotask.net/ATServicesRest/V1.0/TicketCategories`
-        const data = await callApi(baseUrl, {
-          method: 'PUT',
-          headers: getAutotaskHeaders({ 'Content-Type': 'application/json' }),
-          body: JSON.stringify(input.body),
-        })
-        return {
-          content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
-        }
-      } catch (error) {
-        const msg = error instanceof Error ? error.message : String(error)
-        return {
-          content: [{ type: 'text', text: `Error: ${msg}` }],
-          isError: true,
-        }
-      }
-    },
-  )
-  server.tool(
-    'ticketCategoriesPatchEntity',
-    `Generated from Postman`,
-    { body: z.any() },
-    async (input, extra) => {
-      try {
-        const baseUrl = `https://webservices15.autotask.net/ATServicesRest/V1.0/TicketCategories`
-        const data = await callApi(baseUrl, {
-          method: 'PATCH',
-          headers: getAutotaskHeaders({ 'Content-Type': 'application/json' }),
-          body: JSON.stringify(input.body),
-        })
-        return {
-          content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
-        }
-      } catch (error) {
-        const msg = error instanceof Error ? error.message : String(error)
-        return {
-          content: [{ type: 'text', text: `Error: ${msg}` }],
-          isError: true,
-        }
-      }
-    },
-  )
+  // Removed: ticketCategoriesUpdateEntity, ticketCategoriesPatchEntity (write operations not needed for read-only agent)
   server.tool(
     'ticketCategoryFieldDefaultsUrlParameterQueryCount',
     `Generated from Postman`,
@@ -818,52 +658,7 @@ export function registerTools(server: McpServer) {
       }
     },
   )
-  server.tool(
-    'ticketCategoryFieldDefaultsQueryFieldDefinitions',
-    `Generated from Postman`,
-    {},
-    async () => {
-      try {
-        const baseUrl = `https://webservices15.autotask.net/ATServicesRest/V1.0/TicketCategoryFieldDefaults/entityInformation/fields`
-        const data = await callApi(baseUrl, {
-          method: 'GET',
-          headers: getAutotaskHeaders(),
-        })
-        return {
-          content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
-        }
-      } catch (error) {
-        const msg = error instanceof Error ? error.message : String(error)
-        return {
-          content: [{ type: 'text', text: `Error: ${msg}` }],
-          isError: true,
-        }
-      }
-    },
-  )
-  server.tool(
-    'ticketCategoryFieldDefaultsQueryUserDefinedFieldDefinitions',
-    `Generated from Postman`,
-    {},
-    async () => {
-      try {
-        const baseUrl = `https://webservices15.autotask.net/ATServicesRest/V1.0/TicketCategoryFieldDefaults/entityInformation/userDefinedFields`
-        const data = await callApi(baseUrl, {
-          method: 'GET',
-          headers: getAutotaskHeaders(),
-        })
-        return {
-          content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
-        }
-      } catch (error) {
-        const msg = error instanceof Error ? error.message : String(error)
-        return {
-          content: [{ type: 'text', text: `Error: ${msg}` }],
-          isError: true,
-        }
-      }
-    },
-  )
+  // Removed: ticketCategoryFieldDefaultsQueryFieldDefinitions, ticketCategoryFieldDefaultsQueryUserDefinedFieldDefinitions, ticketCategoryFieldDefaultsQueryEntityInformation (metadata queries not needed)
   server.tool(
     'ticketCategoryFieldDefaultsQueryEntityInformation',
     `Generated from Postman`,
@@ -1263,29 +1058,7 @@ export function registerTools(server: McpServer) {
       }
     },
   )
-  server.tool(
-    'ticketNoteAttachmentsChildDeleteEntity',
-    `Generated from Postman`,
-    { parentId: z.string(), id: z.string() },
-    async (input, extra) => {
-      try {
-        const baseUrl = `https://webservices15.autotask.net/ATServicesRest/V1.0/TicketNotes/${input.parentId}/Attachments/${input.id}`
-        const data = await callApi(baseUrl, {
-          method: 'DELETE',
-          headers: getAutotaskHeaders(),
-        })
-        return {
-          content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
-        }
-      } catch (error) {
-        const msg = error instanceof Error ? error.message : String(error)
-        return {
-          content: [{ type: 'text', text: `Error: ${msg}` }],
-          isError: true,
-        }
-      }
-    },
-  )
+  // Removed: ticketNoteAttachmentsChildDeleteEntity (write operation not needed for read-only agent)
   server.tool(
     'ticketNoteAttachmentsChildQuery',
     `Generated from Postman`,
@@ -1309,30 +1082,7 @@ export function registerTools(server: McpServer) {
       }
     },
   )
-  server.tool(
-    'ticketNoteAttachmentsChildCreateEntity',
-    `Generated from Postman`,
-    { parentId: z.string(), body: z.any() },
-    async (input, extra) => {
-      try {
-        const baseUrl = `https://webservices15.autotask.net/ATServicesRest/V1.0/TicketNotes/${input.parentId}/Attachments`
-        const data = await callApi(baseUrl, {
-          method: 'POST',
-          headers: getAutotaskHeaders({ 'Content-Type': 'application/json' }),
-          body: JSON.stringify(input.body),
-        })
-        return {
-          content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
-        }
-      } catch (error) {
-        const msg = error instanceof Error ? error.message : String(error)
-        return {
-          content: [{ type: 'text', text: `Error: ${msg}` }],
-          isError: true,
-        }
-      }
-    },
-  )
+  // Removed: ticketNoteAttachmentsChildCreateEntity (write operation not needed for read-only agent)
   server.tool(
     'ticketNotesUrlParameterQueryCount',
     `Generated from Postman`,
@@ -1636,78 +1386,7 @@ export function registerTools(server: McpServer) {
       }
     },
   )
-  server.tool(
-    'ticketNotesChildCreateEntity',
-    `Generated from Postman`,
-    { parentId: z.string(), body: z.any() },
-    async (input, extra) => {
-      try {
-        const baseUrl = `https://webservices15.autotask.net/ATServicesRest/V1.0/Tickets/${input.parentId}/Notes`
-        const data = await callApi(baseUrl, {
-          method: 'POST',
-          headers: getAutotaskHeaders({ 'Content-Type': 'application/json' }),
-          body: JSON.stringify(input.body),
-        })
-        return {
-          content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
-        }
-      } catch (error) {
-        const msg = error instanceof Error ? error.message : String(error)
-        return {
-          content: [{ type: 'text', text: `Error: ${msg}` }],
-          isError: true,
-        }
-      }
-    },
-  )
-  server.tool(
-    'ticketNotesChildUpdateEntity',
-    `Generated from Postman`,
-    { parentId: z.string(), body: z.any() },
-    async (input, extra) => {
-      try {
-        const baseUrl = `https://webservices15.autotask.net/ATServicesRest/V1.0/Tickets/${input.parentId}/Notes`
-        const data = await callApi(baseUrl, {
-          method: 'PUT',
-          headers: getAutotaskHeaders({ 'Content-Type': 'application/json' }),
-          body: JSON.stringify(input.body),
-        })
-        return {
-          content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
-        }
-      } catch (error) {
-        const msg = error instanceof Error ? error.message : String(error)
-        return {
-          content: [{ type: 'text', text: `Error: ${msg}` }],
-          isError: true,
-        }
-      }
-    },
-  )
-  server.tool(
-    'ticketNotesChildPatchEntity',
-    `Generated from Postman`,
-    { parentId: z.string(), body: z.any() },
-    async (input, extra) => {
-      try {
-        const baseUrl = `https://webservices15.autotask.net/ATServicesRest/V1.0/Tickets/${input.parentId}/Notes`
-        const data = await callApi(baseUrl, {
-          method: 'PATCH',
-          headers: getAutotaskHeaders({ 'Content-Type': 'application/json' }),
-          body: JSON.stringify(input.body),
-        })
-        return {
-          content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
-        }
-      } catch (error) {
-        const msg = error instanceof Error ? error.message : String(error)
-        return {
-          content: [{ type: 'text', text: `Error: ${msg}` }],
-          isError: true,
-        }
-      }
-    },
-  )
+  // Removed: ticketNotesChildCreateEntity, ticketNotesChildUpdateEntity, ticketNotesChildPatchEntity (write operations not needed for read-only agent)
   server.tool(
     'ticketSecondaryResourcesChildQueryItem',
     `Generated from Postman`,
@@ -1731,29 +1410,7 @@ export function registerTools(server: McpServer) {
       }
     },
   )
-  server.tool(
-    'ticketSecondaryResourcesChildDeleteEntity',
-    `Generated from Postman`,
-    { parentId: z.string(), id: z.string() },
-    async (input, extra) => {
-      try {
-        const baseUrl = `https://webservices15.autotask.net/ATServicesRest/V1.0/Tickets/${input.parentId}/SecondaryResources/${input.id}`
-        const data = await callApi(baseUrl, {
-          method: 'DELETE',
-          headers: getAutotaskHeaders(),
-        })
-        return {
-          content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
-        }
-      } catch (error) {
-        const msg = error instanceof Error ? error.message : String(error)
-        return {
-          content: [{ type: 'text', text: `Error: ${msg}` }],
-          isError: true,
-        }
-      }
-    },
-  )
+  // Removed: ticketSecondaryResourcesChildDeleteEntity (write operation not needed for read-only agent)
   server.tool(
     'ticketSecondaryResourcesChildQueryFieldDefinitions',
     `Generated from Postman`,
@@ -1846,30 +1503,7 @@ export function registerTools(server: McpServer) {
       }
     },
   )
-  server.tool(
-    'ticketSecondaryResourcesChildCreateEntity',
-    `Generated from Postman`,
-    { parentId: z.string(), body: z.any() },
-    async (input, extra) => {
-      try {
-        const baseUrl = `https://webservices15.autotask.net/ATServicesRest/V1.0/Tickets/${input.parentId}/SecondaryResources`
-        const data = await callApi(baseUrl, {
-          method: 'POST',
-          headers: getAutotaskHeaders({ 'Content-Type': 'application/json' }),
-          body: JSON.stringify(input.body),
-        })
-        return {
-          content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
-        }
-      } catch (error) {
-        const msg = error instanceof Error ? error.message : String(error)
-        return {
-          content: [{ type: 'text', text: `Error: ${msg}` }],
-          isError: true,
-        }
-      }
-    },
-  )
+  // Removed: ticketSecondaryResourcesChildCreateEntity (write operation not needed for read-only agent)
   server.tool(
     'ticketsUrlParameterQueryCount',
     `Generated from Postman`,
@@ -2321,78 +1955,7 @@ export function registerTools(server: McpServer) {
       }
     },
   )
-  server.tool(
-    'ticketsCreateEntity',
-    `Generated from Postman`,
-    { body: z.any() },
-    async (input, extra) => {
-      try {
-        const baseUrl = `https://webservices15.autotask.net/ATServicesRest/V1.0/Tickets`
-        const data = await callApi(baseUrl, {
-          method: 'POST',
-          headers: getAutotaskHeaders({ 'Content-Type': 'application/json' }),
-          body: JSON.stringify(input.body),
-        })
-        return {
-          content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
-        }
-      } catch (error) {
-        const msg = error instanceof Error ? error.message : String(error)
-        return {
-          content: [{ type: 'text', text: `Error: ${msg}` }],
-          isError: true,
-        }
-      }
-    },
-  )
-  server.tool(
-    'ticketsUpdateEntity',
-    `Generated from Postman`,
-    { body: z.any() },
-    async (input, extra) => {
-      try {
-        const baseUrl = `https://webservices15.autotask.net/ATServicesRest/V1.0/Tickets`
-        const data = await callApi(baseUrl, {
-          method: 'PUT',
-          headers: getAutotaskHeaders({ 'Content-Type': 'application/json' }),
-          body: JSON.stringify(input.body),
-        })
-        return {
-          content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
-        }
-      } catch (error) {
-        const msg = error instanceof Error ? error.message : String(error)
-        return {
-          content: [{ type: 'text', text: `Error: ${msg}` }],
-          isError: true,
-        }
-      }
-    },
-  )
-  server.tool(
-    'ticketsPatchEntity',
-    `Generated from Postman`,
-    { body: z.any() },
-    async (input, extra) => {
-      try {
-        const baseUrl = `https://webservices15.autotask.net/ATServicesRest/V1.0/Tickets`
-        const data = await callApi(baseUrl, {
-          method: 'PATCH',
-          headers: getAutotaskHeaders({ 'Content-Type': 'application/json' }),
-          body: JSON.stringify(input.body),
-        })
-        return {
-          content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
-        }
-      } catch (error) {
-        const msg = error instanceof Error ? error.message : String(error)
-        return {
-          content: [{ type: 'text', text: `Error: ${msg}` }],
-          isError: true,
-        }
-      }
-    },
-  )
+  // Removed: ticketsCreateEntity, ticketsUpdateEntity, ticketsPatchEntity (write operations not needed for read-only agent)
   server.tool(
     'ticketSecondaryResourcesUrlParameterQueryCount',
     `Generated from Postman`,
