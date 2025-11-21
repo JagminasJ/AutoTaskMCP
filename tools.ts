@@ -770,6 +770,24 @@ export function registerTools(server: McpServer) {
             op: 'gte',
             value: defaultCutoffDateStr,
           })
+          
+          // For open tickets (when excludeStatus is set), also filter by lastActivityDate to get current tickets
+          // This ensures we get tickets with recent activity, not just old open tickets
+          if (input.excludeStatus && input.excludeStatus.length > 0) {
+            // Get tickets with activity in the last 90 days to ensure they're current
+            const activityCutoffDate = new Date()
+            activityCutoffDate.setDate(activityCutoffDate.getDate() - 90)
+            activityCutoffDate.setHours(0, 0, 0, 0)
+            const activityCutoffDateStr = activityCutoffDate.toISOString()
+            
+            console.log(`[getTicketsByResourceName] Adding activity filter for open tickets: lastActivityDate >= ${activityCutoffDateStr} (last 90 days)`)
+            
+            ticketBody.filter.push({
+              field: 'lastActivityDate',
+              op: 'gte',
+              value: activityCutoffDateStr,
+            })
+          }
         }
         
         // Add due date filters if specified
@@ -876,6 +894,40 @@ export function registerTools(server: McpServer) {
             
             if (cutoffDate && ticketDate < cutoffDate) {
               return false
+            }
+            
+            // Client-side status exclusion filter (for "open tickets" queries)
+            // CRITICAL: Exclude completed (3), closed (5), and deleted statuses
+            if (input.excludeStatus && input.excludeStatus.length > 0) {
+              if (ticket.status !== undefined && input.excludeStatus.includes(ticket.status)) {
+                console.log(`[getTicketsByResourceName] Filtered out ticket ${ticket.id}: status ${ticket.status} is in excludeStatus list`)
+                return false
+              }
+            }
+            
+            // Also filter out completed (3) and closed (5) tickets by default for "open tickets" queries
+            // This is a safety net in case the agent doesn't set excludeStatus
+            if (ticket.status === 3 || ticket.status === 5) {
+              console.log(`[getTicketsByResourceName] Filtered out ticket ${ticket.id}: status ${ticket.status} (completed/closed)`)
+              return false
+            }
+            
+            // For open tickets, also ensure they have recent activity (last 90 days) to be considered "current"
+            if (input.excludeStatus && input.excludeStatus.length > 0) {
+              if (ticket.lastActivityDate) {
+                const activityDate = new Date(ticket.lastActivityDate)
+                if (!isNaN(activityDate.getTime())) {
+                  const daysSinceActivity = Math.floor((Date.now() - activityDate.getTime()) / (1000 * 60 * 60 * 24))
+                  if (daysSinceActivity > 90) {
+                    console.log(`[getTicketsByResourceName] Filtered out ticket ${ticket.id}: last activity was ${daysSinceActivity} days ago (not current)`)
+                    return false
+                  }
+                }
+              } else {
+                // If no lastActivityDate, exclude it (not current)
+                console.log(`[getTicketsByResourceName] Filtered out ticket ${ticket.id}: no lastActivityDate (not current)`)
+                return false
+              }
             }
             
             // Client-side due date filter as fallback
