@@ -337,8 +337,8 @@ export function registerTools(server: McpServer) {
           if (tickets.length > 0) {
             const sampleDates = tickets.slice(0, 3).map((t: any) => ({
               id: t.id,
-              lastActivityDate: t.lastActivityDate,
               createDate: t.createDate,
+              lastActivityDate: t.lastActivityDate,
             }))
             console.log(`[getTicketsByCompanyName] Sample tickets before sort:`, JSON.stringify(sampleDates, null, 2))
           }
