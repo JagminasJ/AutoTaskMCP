@@ -1558,7 +1558,7 @@ export function registerTools(server: McpServer) {
   )
   server.tool(
     'ticketsQueryCount',
-    `Get the count of tickets matching filter criteria. Use this when you only need the number of tickets, not the full records. This is faster and returns smaller responses than ticketsQuery. Useful for questions like "How many tickets..." or "Count tickets...".`,
+    `ONLY use this when the user explicitly asks "how many" or "count" tickets. This returns ONLY a number, NOT ticket details. DO NOT use this when user asks to "show", "list", "get", "find", or "retrieve" tickets - use ticketsQuery instead. This tool returns only a count number, never ticket information.`,
     { body: z.any() },
     async (input, extra) => {
       try {
@@ -1637,7 +1637,7 @@ export function registerTools(server: McpServer) {
   )
   server.tool(
     'ticketsQuery',
-    `Query tickets with filters, sorting, and pagination. Use this for complex queries about tickets, their status, priority, categories, companies, contacts, or service calls. When querying by company name, first use companiesQuery or companiesUrlParameterQuery to find the company ID, then use that ID in the filter with field "companyID". Always include maxRecords parameter (default is 20, maximum is 100) to limit response size. Returns ticket information including ID, number, title, status, priority, company, contact, dates, and category.`,
+    `Use this to GET, SHOW, LIST, FIND, or RETRIEVE actual ticket details and information. This returns full ticket records with all details. When user asks to "show tickets", "list tickets", "get tickets", "find tickets", "latest tickets", or "recent tickets" - ALWAYS use this tool, NOT ticketsQueryCount. When querying by company name, first use companiesQuery or companiesUrlParameterQuery to find the company ID, then use that ID in the filter with field "companyID". Always include maxRecords parameter (default is 20, maximum is 100) to limit response size. Returns ticket information including ID, number, title, status, priority, company, contact, dates, and category.`,
     {
       body: z.object({
         filter: z.array(z.any()).optional(),

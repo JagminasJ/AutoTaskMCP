@@ -250,9 +250,10 @@ export function registerResources(server: McpServer) {
                   {
                     name: 'ticketsQueryCount',
                     method: 'POST',
-                    description: 'Get count of tickets matching filter criteria',
-                    useCase: 'Count tickets without retrieving full records',
+                    description: 'Get count of tickets matching filter criteria - returns ONLY a number, NOT ticket details',
+                    useCase: 'ONLY when user explicitly asks "how many" or "count" - DO NOT use for "show", "list", "get", or "find" tickets',
                     input: 'body (object with filter)',
+                    warning: 'This returns only a count number, never use when user wants to see ticket details',
                   },
                   {
                     name: 'ticketsUrlParameterQuery',
