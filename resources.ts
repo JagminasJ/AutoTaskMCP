@@ -238,14 +238,25 @@ export function registerResources(server: McpServer) {
             uri: 'autotask://available-tools',
             text: JSON.stringify(
               {
+                primaryTools: [
+                  {
+                    name: 'getTicketsByCompanyName',
+                    method: 'POST',
+                    description: 'PRIMARY TOOL: Get tickets by company name - automatically finds company and returns ticket details',
+                    useCase: 'When user asks for tickets from a company by name (e.g., "show me tickets for Company Name" or "latest 5 tickets for Company Name")',
+                    input: 'companyName (string), maxRecords (optional number), sortByDate (optional boolean)',
+                    note: 'This tool handles company lookup and ticket query automatically. Returns actual ticket details, NOT a count.',
+                  },
+                ],
                 ticketTools: [
                   {
                     name: 'ticketsQuery',
                     method: 'POST',
                     description:
-                      'Query tickets with complex filters, sorting, and pagination',
-                    useCase: 'Complex queries with multiple filters',
+                      'Query tickets with complex filters, sorting, and pagination - returns actual ticket details',
+                    useCase: 'Complex queries with multiple filters, or when you already have company ID',
                     input: 'body (object with filter, maxRecords, sort, etc.)',
+                    warning: 'Use getTicketsByCompanyName if user provides company name. Use ticketsQuery when you have company ID.',
                   },
                   {
                     name: 'ticketsQueryCount',
@@ -309,11 +320,19 @@ export function registerResources(server: McpServer) {
                   singleRecord: 'Use *QueryItem tools',
                 },
                 workflows: {
-                  ticketsByCompanyName: [
-                    'Step 1: Use companiesUrlParameterQuery with company name to find company',
-                    'Step 2: Extract company ID from the results',
-                    'Step 3: Use ticketsQuery with filter: [{"field": "companyID", "op": "eq", "value": "<id>"}], maxRecords: 5-20, sort: [{"field": "createDate", "direction": "DESC"}]',
-                  ],
+                  ticketsByCompanyName: {
+                    recommended: 'Use getTicketsByCompanyName tool directly - it handles everything automatically',
+                    manual: [
+                      'Step 1: Use companiesUrlParameterQuery with company name to find company',
+                      'Step 2: Extract company ID from the results',
+                      'Step 3: Use ticketsQuery (NOT ticketsQueryCount) with filter: [{"field": "companyID", "op": "eq", "value": "<id>"}], maxRecords: 5-20, sort: [{"field": "createDate", "direction": "DESC"}]',
+                    ],
+                  },
+                  toolSelection: {
+                    whenUserWantsTicketDetails: 'Use getTicketsByCompanyName or ticketsQuery - these return actual ticket information',
+                    whenUserWantsCountOnly: 'Use ticketsQueryCount - this returns ONLY a number, NOT ticket details',
+                    criticalRule: 'NEVER use ticketsQueryCount when user asks to "show", "list", "get", "find", "retrieve", "latest", or "recent" tickets',
+                  },
                 },
               },
               null,

@@ -1635,9 +1635,115 @@ export function registerTools(server: McpServer) {
       }
     },
   )
+  // Helper tool for common workflow: tickets by company name
+  server.tool(
+    'getTicketsByCompanyName',
+    `PRIMARY TOOL: Get tickets by company name. Use this when user asks for tickets from a specific company by name (e.g., "show me tickets for Company Name" or "latest 5 tickets for Company Name"). This tool automatically finds the company and returns actual ticket details. Returns full ticket records with all details. DO NOT use ticketsQueryCount - this tool returns actual ticket information.`,
+    {
+      companyName: z.string().describe('The name of the company to search for'),
+      maxRecords: z.number().max(100).optional().describe('Number of tickets to return (default: 20, max: 100)'),
+      sortByDate: z.boolean().optional().describe('Sort by create date descending (default: true)'),
+    },
+    async (input, extra) => {
+      try {
+        // Step 1: Find company by name
+        const companySearchUrl = `https://webservices15.autotask.net/ATServicesRest/V1.0/Companies/query`
+        const companyData = await callApi(companySearchUrl, {
+          method: 'GET',
+          headers: getAutotaskHeaders(),
+          params: { search: input.companyName },
+        })
+        
+        // Extract company ID
+        let companyId: string | null = null
+        if (Array.isArray(companyData) && companyData.length > 0) {
+          companyId = companyData[0].id?.toString() || companyData[0].companyID?.toString() || null
+        } else if (companyData && typeof companyData === 'object' && 'id' in companyData) {
+          companyId = companyData.id?.toString() || companyData.companyID?.toString() || null
+        }
+        
+        if (!companyId) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: JSON.stringify(
+                  {
+                    error: 'Company not found',
+                    message: `Could not find a company matching "${input.companyName}"`,
+                    suggestion: 'Check the company name spelling or try a partial name',
+                  },
+                  null,
+                  2,
+                ),
+              },
+            ],
+            isError: true,
+          }
+        }
+        
+        // Step 2: Query tickets by company ID
+        const ticketsUrl = `https://webservices15.autotask.net/ATServicesRest/V1.0/Tickets/query`
+        const ticketBody: any = {
+          filter: [{ field: 'companyID', op: 'eq', value: companyId }],
+          maxRecords: input.maxRecords || 20,
+        }
+        
+        if (input.sortByDate !== false) {
+          ticketBody.sort = [{ field: 'createDate', direction: 'DESC' }]
+        }
+        
+        const optimizedBody = enforceMaxRecords(ticketBody)
+        const ticketData = await callApi(ticketsUrl, {
+          method: 'POST',
+          headers: getAutotaskHeaders({ 'Content-Type': 'application/json' }),
+          body: JSON.stringify(optimizedBody),
+        })
+        
+        const formatted = formatResponse(ticketData)
+        const responseText = truncateResponse(formatted)
+        
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify(
+                {
+                  companyName: input.companyName,
+                  companyID: companyId,
+                  tickets: JSON.parse(responseText),
+                },
+                null,
+                2,
+              ),
+            },
+          ],
+        }
+      } catch (error) {
+        const msg = error instanceof Error ? error.message : String(error)
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify(
+                {
+                  error: 'Failed to get tickets by company name',
+                  message: msg,
+                  suggestion: 'Verify the company name is correct',
+                },
+                null,
+                2,
+              ),
+            },
+          ],
+          isError: true,
+        }
+      }
+    },
+  )
   server.tool(
     'ticketsQuery',
-    `Use this to GET, SHOW, LIST, FIND, or RETRIEVE actual ticket details and information. This returns full ticket records with all details. When user asks to "show tickets", "list tickets", "get tickets", "find tickets", "latest tickets", or "recent tickets" - ALWAYS use this tool, NOT ticketsQueryCount. When querying by company name, first use companiesQuery or companiesUrlParameterQuery to find the company ID, then use that ID in the filter with field "companyID". Always include maxRecords parameter (default is 20, maximum is 100) to limit response size. Returns ticket information including ID, number, title, status, priority, company, contact, dates, and category.`,
+    `Use this to GET, SHOW, LIST, FIND, or RETRIEVE actual ticket details and information. This returns full ticket records with all details. When user asks to "show tickets", "list tickets", "get tickets", "find tickets", "latest tickets", or "recent tickets" - ALWAYS use this tool, NOT ticketsQueryCount. For tickets by company name, prefer getTicketsByCompanyName tool. When querying by company ID directly, use this tool with companyID filter. Always include maxRecords parameter (default is 20, maximum is 100) to limit response size. Returns ticket information including ID, number, title, status, priority, company, contact, dates, and category.`,
     {
       body: z.object({
         filter: z.array(z.any()).optional(),
