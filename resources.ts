@@ -256,12 +256,12 @@ export function registerResources(server: McpServer) {
                     note: 'This tool handles resource lookup and ticket query automatically. Supports filtering by due date. Returns actual ticket details, NOT a count.',
                   },
                   {
-                    name: 'getTicketsCreatedToday',
+                    name: 'getTicketsByDate',
                     method: 'POST',
-                    description: 'PRIMARY TOOL: Get tickets created today with specific fields - automatically filters by today\'s date and returns only requested fields',
-                    useCase: 'When user asks for "tickets created today", "today\'s tickets", or "tickets from today"',
-                    input: 'fields (optional array of strings), maxRecords (optional number, default 100)',
-                    note: 'This tool automatically filters by createDate = today, looks up company names and contact names, and returns only the requested fields. Returns actual ticket details, NOT a count.',
+                    description: 'PRIMARY TOOL: Get tickets created on a specific date with specific fields - automatically parses natural language dates and returns only requested fields',
+                    useCase: 'When user asks for "tickets created today", "tickets created yesterday", "tickets created on Wednesday", "tickets created on 2025-01-15", or any date',
+                    input: 'date (string - accepts "today", "yesterday", day names, specific dates, or relative dates), fields (optional array of strings), maxRecords (optional number, default 100)',
+                    note: 'This tool automatically parses natural language date descriptions, filters by createDate, looks up company names and contact names, and returns only the requested fields. Returns actual ticket details, NOT a count.',
                   },
                 ],
                 ticketTools: [

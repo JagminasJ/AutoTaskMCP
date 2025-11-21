@@ -1088,33 +1088,119 @@ export function registerTools(server: McpServer) {
     },
   )
 
-  // PRIMARY TOOL - Get tickets created today with specific fields
+  // Helper function to parse natural language date descriptions
+  function parseDateInput(dateInput: string): { start: Date; end: Date; description: string } {
+    const now = new Date()
+    const today = new Date(now)
+    today.setHours(0, 0, 0, 0)
+    
+    const inputLower = dateInput.toLowerCase().trim()
+    
+    // Handle "today"
+    if (inputLower === 'today' || inputLower === 'todays') {
+      const start = new Date(today)
+      const end = new Date(today)
+      end.setDate(end.getDate() + 1)
+      return { start, end, description: 'today' }
+    }
+    
+    // Handle "yesterday"
+    if (inputLower === 'yesterday') {
+      const start = new Date(today)
+      start.setDate(start.getDate() - 1)
+      const end = new Date(start)
+      end.setDate(end.getDate() + 1)
+      return { start, end, description: 'yesterday' }
+    }
+    
+    // Handle day names (Monday, Tuesday, etc.) - find most recent occurrence
+    const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday']
+    const dayIndex = dayNames.findIndex(day => inputLower.includes(day))
+    if (dayIndex !== -1) {
+      const targetDay = dayIndex
+      const currentDay = now.getDay()
+      let daysAgo = (currentDay - targetDay + 7) % 7
+      // If today is the target day, use today. Otherwise, use the most recent occurrence
+      if (daysAgo === 0 && now.getHours() < 12) {
+        // If it's early in the day, might want to use last week's occurrence
+        daysAgo = 7
+      } else if (daysAgo === 0) {
+        daysAgo = 0 // Use today
+      }
+      
+      const start = new Date(today)
+      start.setDate(start.getDate() - daysAgo)
+      const end = new Date(start)
+      end.setDate(end.getDate() + 1)
+      return { start, end, description: dayNames[targetDay] }
+    }
+    
+    // Handle specific date formats (YYYY-MM-DD, MM/DD/YYYY, etc.)
+    // Try ISO format first (YYYY-MM-DD)
+    const isoMatch = inputLower.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/)
+    if (isoMatch) {
+      const [, year, month, day] = isoMatch
+      const start = new Date(parseInt(year), parseInt(month) - 1, parseInt(day))
+      start.setHours(0, 0, 0, 0)
+      const end = new Date(start)
+      end.setDate(end.getDate() + 1)
+      return { start, end, description: `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}` }
+    }
+    
+    // Try MM/DD/YYYY format
+    const usMatch = inputLower.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/)
+    if (usMatch) {
+      const [, month, day, year] = usMatch
+      const start = new Date(parseInt(year), parseInt(month) - 1, parseInt(day))
+      start.setHours(0, 0, 0, 0)
+      const end = new Date(start)
+      end.setDate(end.getDate() + 1)
+      return { start, end, description: `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}` }
+    }
+    
+    // Handle relative dates like "3 days ago", "last week", etc.
+    const daysAgoMatch = inputLower.match(/(\d+)\s+days?\s+ago/)
+    if (daysAgoMatch) {
+      const days = parseInt(daysAgoMatch[1])
+      const start = new Date(today)
+      start.setDate(start.getDate() - days)
+      const end = new Date(start)
+      end.setDate(end.getDate() + 1)
+      return { start, end, description: `${days} days ago` }
+    }
+    
+    // Default to today if we can't parse it
+    console.log(`[getTicketsByDate] Could not parse date input "${dateInput}", defaulting to today`)
+    const start = new Date(today)
+    const end = new Date(today)
+    end.setDate(end.getDate() + 1)
+    return { start, end, description: 'today (default)' }
+  }
+
+  // PRIMARY TOOL - Get tickets created on a specific date with specific fields
   server.tool(
-    'getTicketsCreatedToday',
-    `PRIMARY TOOL for tickets created today. Use this when user asks for "tickets created today", "today's tickets", or "tickets from today". This tool automatically filters by createDate = today, returns only essential fields (company name, ticket number, sender, description), and handles company/contact name lookups. Returns ACTUAL TICKET DETAILS, NOT a count. DO NOT use ticketsQueryCount - that returns only a number.`,
+    'getTicketsByDate',
+    `PRIMARY TOOL for tickets created on a specific date. Use this when user asks for "tickets created today", "tickets created yesterday", "tickets created on Wednesday", "tickets created on 2025-01-15", or any date. This tool automatically parses natural language date descriptions (today, yesterday, day names, specific dates), filters by createDate, returns only essential fields (company name, ticket number, sender, description), and handles company/contact name lookups. Returns ACTUAL TICKET DETAILS, NOT a count. DO NOT use ticketsQueryCount - that returns only a number.`,
     {
+      date: z.string().describe('The date to filter by. Accepts natural language: "today", "yesterday", day names (e.g., "Wednesday", "Monday"), specific dates (e.g., "2025-01-15", "1/15/2025"), or relative dates (e.g., "3 days ago"). The tool will automatically parse and filter tickets created on that date.'),
       fields: z.array(z.string()).optional().describe('Optional: Specific fields to return. Default: ["ticketNumber", "title", "companyName", "contactName", "description", "createDate", "status", "priority"]. Common fields: ticketNumber, title, companyName, contactName, description, createDate, status, priority, dueDateTime.'),
       maxRecords: z.number().max(500).optional().describe('Number of tickets to return (default: 100, max: 500).'),
     },
     async (input, extra) => {
       try {
-        // Get today's date range (start and end of today in UTC)
-        const today = new Date()
-        today.setHours(0, 0, 0, 0)
-        const todayStart = today.toISOString()
+        // Parse the date input to get start and end dates
+        const { start, end, description } = parseDateInput(input.date)
+        const startISO = start.toISOString()
+        const endISO = end.toISOString()
         
-        const tomorrow = new Date(today)
-        tomorrow.setDate(tomorrow.getDate() + 1)
-        const tomorrowStart = tomorrow.toISOString()
+        console.log(`[getTicketsByDate] Filtering tickets created between ${startISO} and ${endISO} (${description})`)
         
-        console.log(`[getTicketsCreatedToday] Filtering tickets created between ${todayStart} and ${tomorrowStart}`)
-        
-        // Query tickets created today
+        // Query tickets created on the specified date
         const ticketsUrl = `https://webservices15.autotask.net/ATServicesRest/V1.0/Tickets/query`
         const ticketBody: any = {
           filter: [
-            { field: 'createDate', op: 'gte', value: todayStart },
-            { field: 'createDate', op: 'lt', value: tomorrowStart },
+            { field: 'createDate', op: 'gte', value: startISO },
+            { field: 'createDate', op: 'lt', value: endISO },
           ],
           maxRecords: input.maxRecords || 100,
           sort: [{ field: 'createDate', direction: 'DESC' }],
@@ -1126,7 +1212,7 @@ export function registerTools(server: McpServer) {
           body: JSON.stringify(ticketBody),
         })
         
-        console.log(`[getTicketsCreatedToday] API returned ${Array.isArray(ticketData) ? ticketData.length : 'non-array'} tickets`)
+        console.log(`[getTicketsByDate] API returned ${Array.isArray(ticketData) ? ticketData.length : 'non-array'} tickets`)
         
         // Handle API response
         let tickets: any[] = []
@@ -1144,7 +1230,7 @@ export function registerTools(server: McpServer) {
           }
         }
         
-        console.log(`[getTicketsCreatedToday] Parsed ${tickets.length} tickets from API response`)
+        console.log(`[getTicketsByDate] Parsed ${tickets.length} tickets from API response`)
         
         // Get unique company IDs and contact IDs for lookup
         const companyIds = [...new Set(tickets.map((t: any) => t.companyID).filter(Boolean))]
@@ -1155,46 +1241,36 @@ export function registerTools(server: McpServer) {
         if (companyIds.length > 0) {
           try {
             const companiesUrl = `https://webservices15.autotask.net/ATServicesRest/V1.0/Companies/query`
-            // Query companies in batches if needed (Autotask API limit is 500)
-            for (let i = 0; i < companyIds.length; i += 100) {
-              const batch = companyIds.slice(i, i + 100)
-              const companyBody = {
-                filter: batch.map((id: number) => ({ field: 'id', op: 'eq', value: id })),
-                maxRecords: 100,
-              }
-              
-              // Use OR logic - Autotask might not support multiple OR filters easily, so query individually
-              // Actually, let's query each company individually to be safe
-              for (const companyId of batch) {
-                try {
-                  const companyQuery = {
-                    filter: [{ field: 'id', op: 'eq', value: companyId }],
-                    maxRecords: 1,
-                  }
-                  const companyData = await callApi(companiesUrl, {
-                    method: 'POST',
-                    headers: getAutotaskHeaders({ 'Content-Type': 'application/json' }),
-                    body: JSON.stringify(companyQuery),
-                  })
-                  
-                  let companies: any[] = []
-                  if (Array.isArray(companyData)) {
-                    companies = companyData
-                  } else if (companyData && typeof companyData === 'object') {
-                    companies = companyData.items || companyData.data || companyData.records || []
-                  }
-                  
-                  if (companies.length > 0) {
-                    const company = companies[0]
-                    companyMap.set(companyId, company.companyName || company.name || `Company ${companyId}`)
-                  }
-                } catch (error) {
-                  console.log(`[getTicketsCreatedToday] Failed to lookup company ${companyId}:`, error)
+            // Query companies individually to avoid API limitations
+            for (const companyId of companyIds.slice(0, 100)) { // Limit to 100 to avoid too many API calls
+              try {
+                const companyQuery = {
+                  filter: [{ field: 'id', op: 'eq', value: companyId }],
+                  maxRecords: 1,
                 }
+                const companyData = await callApi(companiesUrl, {
+                  method: 'POST',
+                  headers: getAutotaskHeaders({ 'Content-Type': 'application/json' }),
+                  body: JSON.stringify(companyQuery),
+                })
+                
+                let companies: any[] = []
+                if (Array.isArray(companyData)) {
+                  companies = companyData
+                } else if (companyData && typeof companyData === 'object') {
+                  companies = companyData.items || companyData.data || companyData.records || []
+                }
+                
+                if (companies.length > 0) {
+                  const company = companies[0]
+                  companyMap.set(companyId, company.companyName || company.name || `Company ${companyId}`)
+                }
+              } catch (error) {
+                console.log(`[getTicketsByDate] Failed to lookup company ${companyId}:`, error)
               }
             }
           } catch (error) {
-            console.log(`[getTicketsCreatedToday] Failed to lookup companies:`, error)
+            console.log(`[getTicketsByDate] Failed to lookup companies:`, error)
           }
         }
         
@@ -1230,11 +1306,11 @@ export function registerTools(server: McpServer) {
                   contactMap.set(contactId, contactName)
                 }
               } catch (error) {
-                console.log(`[getTicketsCreatedToday] Failed to lookup contact ${contactId}:`, error)
+                console.log(`[getTicketsByDate] Failed to lookup contact ${contactId}:`, error)
               }
             }
           } catch (error) {
-            console.log(`[getTicketsCreatedToday] Failed to lookup contacts:`, error)
+            console.log(`[getTicketsByDate] Failed to lookup contacts:`, error)
           }
         }
         
@@ -1273,7 +1349,11 @@ export function registerTools(server: McpServer) {
         })
         
         const responseData = {
-          dateFilter: `Tickets created today (${today.toISOString().split('T')[0]})`,
+          dateFilter: `Tickets created on ${description} (${start.toISOString().split('T')[0]})`,
+          dateRange: {
+            start: start.toISOString(),
+            end: end.toISOString(),
+          },
           totalTicketsReturned: simplifiedTickets.length,
           maxRecordsRequested: input.maxRecords || 100,
           fields: requestedFields,
@@ -1293,7 +1373,8 @@ export function registerTools(server: McpServer) {
         }
       } catch (error) {
         const msg = error instanceof Error ? error.message : String(error)
-        console.error('getTicketsCreatedToday error:', {
+        console.error('getTicketsByDate error:', {
+          date: input.date,
           error: msg,
         })
         return {
@@ -1302,10 +1383,11 @@ export function registerTools(server: McpServer) {
               type: 'text',
               text: JSON.stringify(
                 {
-                  error: 'Failed to get tickets created today',
+                  error: 'Failed to get tickets by date',
                   message: msg,
-                  suggestion: 'Verify the date filter is correct. Today\'s date is used automatically.',
-                  toolUsed: 'getTicketsCreatedToday',
+                  dateInput: input.date,
+                  suggestion: 'Verify the date input is correct. Accepts: "today", "yesterday", day names (e.g., "Wednesday"), specific dates (e.g., "2025-01-15"), or relative dates (e.g., "3 days ago").',
+                  toolUsed: 'getTicketsByDate',
                 },
                 null,
                 2,
