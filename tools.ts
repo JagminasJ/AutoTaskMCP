@@ -193,25 +193,39 @@ export function registerTools(server: McpServer) {
           maxRecords: fetchSize, // Fetch more to ensure we get recent tickets
         }
         
-        // Add date filter ONLY if daysAgo is explicitly provided
-        // Default to 0 (no filter) for "most recent" queries - return all tickets sorted by date
+        // Add date filter
+        // Default: Exclude tickets older than 2023-01-01 to avoid very old/invalid dates
+        // If daysAgo is explicitly provided, use that instead
         // If daysAgo is explicitly 0, don't filter (return all tickets)
-        // If daysAgo is undefined, don't filter (return all tickets)
         const daysToFilter = input.daysAgo
-        if (daysToFilter !== undefined && daysToFilter > 0) {
+        if (daysToFilter === 0) {
+          // Explicitly requested no filter
+          console.log(`[getTicketsByCompanyName] No date filter applied (daysAgo=0)`)
+        } else if (daysToFilter !== undefined && daysToFilter > 0) {
+          // User specified a time period
           const cutoffDate = new Date()
           cutoffDate.setDate(cutoffDate.getDate() - daysToFilter)
           cutoffDate.setHours(0, 0, 0, 0)
-          // Format as ISO string for API (Autotask expects ISO format)
           const cutoffDateStr = cutoffDate.toISOString()
           
-          console.log(`[getTicketsByCompanyName] Filtering tickets: lastActivityDate >= ${cutoffDateStr} (last ${daysToFilter} days${input.daysAgo === undefined ? ' - default for most recent' : ''})`)
+          console.log(`[getTicketsByCompanyName] Filtering tickets: lastActivityDate >= ${cutoffDateStr} (last ${daysToFilter} days)`)
           
-          // Filter by lastActivityDate to get truly recent tickets
           ticketBody.filter.push({
             field: 'lastActivityDate',
             op: 'gte',
             value: cutoffDateStr,
+          })
+        } else {
+          // Default: Exclude tickets older than 2023-01-01 to avoid very old/invalid dates
+          const defaultCutoffDate = new Date('2023-01-01T00:00:00.000Z')
+          const defaultCutoffDateStr = defaultCutoffDate.toISOString()
+          
+          console.log(`[getTicketsByCompanyName] Applying default date filter: lastActivityDate >= ${defaultCutoffDateStr} (exclude tickets older than 2023-01-01)`)
+          
+          ticketBody.filter.push({
+            field: 'lastActivityDate',
+            op: 'gte',
+            value: defaultCutoffDateStr,
           })
         }
         
@@ -250,43 +264,65 @@ export function registerTools(server: McpServer) {
         }
         
         // Client-side date filter as fallback (in case API doesn't respect filter parameter)
-        // Only apply if daysAgo was explicitly provided and > 0
-        if (daysToFilter !== undefined && daysToFilter > 0 && tickets.length > 0) {
-          const cutoffDate = new Date()
-          cutoffDate.setDate(cutoffDate.getDate() - daysToFilter)
-          cutoffDate.setHours(0, 0, 0, 0)
-          
+        // Also filter out tickets with invalid dates (null, epoch, etc.)
+        if (tickets.length > 0) {
           const beforeFilter = tickets.length
+          
+          // Determine cutoff date
+          let cutoffDate: Date | null = null
+          if (daysToFilter === 0) {
+            // Explicitly requested no filter - but still filter out invalid dates
+            cutoffDate = null
+          } else if (daysToFilter !== undefined && daysToFilter > 0) {
+            // User specified a time period
+            cutoffDate = new Date()
+            cutoffDate.setDate(cutoffDate.getDate() - daysToFilter)
+            cutoffDate.setHours(0, 0, 0, 0)
+          } else {
+            // Default: Exclude tickets older than 2023-01-01
+            cutoffDate = new Date('2023-01-01T00:00:00.000Z')
+          }
+          
           tickets = tickets.filter((ticket: any) => {
-            // Check lastActivityDate first (preferred for "most recent")
+            // Get the ticket's date (prefer lastActivityDate, fallback to createDate)
+            let ticketDate: Date | null = null
+            
             if (ticket.lastActivityDate) {
-              const ticketDate = new Date(ticket.lastActivityDate)
-              if (!isNaN(ticketDate.getTime())) {
-                const isRecent = ticketDate >= cutoffDate
-                if (!isRecent) {
-                  console.log(`[getTicketsByCompanyName] Filtered out ticket ${ticket.id}: lastActivityDate ${ticket.lastActivityDate} is before cutoff ${cutoffDate.toISOString()}`)
-                }
-                return isRecent
+              const d = new Date(ticket.lastActivityDate)
+              if (!isNaN(d.getTime()) && d.getTime() > 0) {
+                ticketDate = d
               }
             }
-            // Fall back to createDate
-            if (ticket.createDate) {
-              const ticketDate = new Date(ticket.createDate)
-              if (!isNaN(ticketDate.getTime())) {
-                const isRecent = ticketDate >= cutoffDate
-                if (!isRecent) {
-                  console.log(`[getTicketsByCompanyName] Filtered out ticket ${ticket.id}: createDate ${ticket.createDate} is before cutoff ${cutoffDate.toISOString()}`)
-                }
-                return isRecent
+            
+            if (!ticketDate && ticket.createDate) {
+              const d = new Date(ticket.createDate)
+              if (!isNaN(d.getTime()) && d.getTime() > 0) {
+                ticketDate = d
               }
             }
-            // If no valid date, exclude the ticket (can't verify it's recent)
-            console.log(`[getTicketsByCompanyName] Filtered out ticket ${ticket.id}: no valid date field`)
-            return false
+            
+            // If no valid date, exclude the ticket (invalid/epoch dates)
+            if (!ticketDate) {
+              console.log(`[getTicketsByCompanyName] Filtered out ticket ${ticket.id}: no valid date field (lastActivityDate: ${ticket.lastActivityDate}, createDate: ${ticket.createDate})`)
+              return false
+            }
+            
+            // If we have a cutoff date, check if ticket is after it
+            if (cutoffDate && ticketDate < cutoffDate) {
+              console.log(`[getTicketsByCompanyName] Filtered out ticket ${ticket.id}: date ${ticketDate.toISOString()} is before cutoff ${cutoffDate.toISOString()}`)
+              return false
+            }
+            
+            return true
           })
           
           if (beforeFilter > tickets.length) {
-            console.log(`[getTicketsByCompanyName] Client-side filter removed ${beforeFilter - tickets.length} tickets older than ${daysToFilter} days`)
+            const filterReason = cutoffDate 
+              ? (daysToFilter !== undefined && daysToFilter > 0 
+                  ? `older than ${daysToFilter} days` 
+                  : 'older than 2023-01-01 (default filter)')
+              : 'with invalid dates'
+            console.log(`[getTicketsByCompanyName] Client-side filter removed ${beforeFilter - tickets.length} tickets (${filterReason})`)
           }
         }
         
@@ -370,12 +406,27 @@ export function registerTools(server: McpServer) {
                   totalTicketsReturned: tickets.length,
                   maxRecordsRequested: input.maxRecords || 50,
                   sortedBy: input.sortByDate !== false ? 'lastActivityDate DESC (most recent first, client-side sorted)' : 'none',
-                  dateFilter: input.daysAgo !== undefined && input.daysAgo > 0 ? `Last ${input.daysAgo} days (filtered by lastActivityDate)` : 'No date filter - showing all tickets sorted by most recent',
+                  dateFilter: input.daysAgo === 0 
+                    ? 'No date filter (explicitly requested)' 
+                    : input.daysAgo !== undefined && input.daysAgo > 0 
+                      ? `Last ${input.daysAgo} days (filtered by lastActivityDate)` 
+                      : 'Default filter: tickets from 2023-01-01 onwards (excludes very old/invalid dates)',
                   dateRange: tickets.length > 0 ? (() => {
+                    // Only use valid dates (not null, not epoch, not invalid)
                     const dates = tickets.map((t: any) => {
-                      const d = new Date(t.lastActivityDate || t.createDate || 0)
-                      return isNaN(d.getTime()) ? null : d
-                    }).filter(Boolean) as Date[]
+                      // Try lastActivityDate first
+                      if (t.lastActivityDate) {
+                        const d = new Date(t.lastActivityDate)
+                        if (!isNaN(d.getTime()) && d.getTime() > 0) return d
+                      }
+                      // Fall back to createDate
+                      if (t.createDate) {
+                        const d = new Date(t.createDate)
+                        if (!isNaN(d.getTime()) && d.getTime() > 0) return d
+                      }
+                      return null
+                    }).filter((d): d is Date => d !== null && d.getTime() > 0)
+                    
                     if (dates.length === 0) return 'No valid dates found'
                     dates.sort((a, b) => b.getTime() - a.getTime())
                     const newest = dates[0]
@@ -389,7 +440,23 @@ export function registerTools(server: McpServer) {
                     }
                   })() : null,
                   note: tickets.length > 0 ? (() => {
-                    const newestDate = new Date(tickets[0]?.lastActivityDate || tickets[0]?.createDate || 0)
+                    // Get the first ticket's date (should be most recent after sorting)
+                    const firstTicket = tickets[0]
+                    let newestDate: Date | null = null
+                    
+                    if (firstTicket?.lastActivityDate) {
+                      const d = new Date(firstTicket.lastActivityDate)
+                      if (!isNaN(d.getTime()) && d.getTime() > 0) newestDate = d
+                    }
+                    if (!newestDate && firstTicket?.createDate) {
+                      const d = new Date(firstTicket.createDate)
+                      if (!isNaN(d.getTime()) && d.getTime() > 0) newestDate = d
+                    }
+                    
+                    if (!newestDate) {
+                      return 'WARNING: Could not determine ticket dates. Some tickets may have invalid or missing date fields.'
+                    }
+                    
                     const daysSinceNewest = Math.floor((Date.now() - newestDate.getTime()) / (1000 * 60 * 60 * 24))
                     if (daysSinceNewest > 180) {
                       return `WARNING: The most recent ticket is ${daysSinceNewest} days old (from ${newestDate.toISOString().split('T')[0]}). These may be the only tickets for this company, or you may want to try a smaller daysAgo value to check for more recent tickets. Tickets are automatically sorted by date (client-side fallback ensures correct order).`
