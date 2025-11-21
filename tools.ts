@@ -203,8 +203,9 @@ export function registerTools(server: McpServer) {
         }
         
         // Always sort by date DESC to get most recent first (unless explicitly disabled)
+        // Use lastActivityDate for most recent activity, fallback to createDate
         if (input.sortByDate !== false) {
-          ticketBody.sort = [{ field: 'createDate', direction: 'DESC' }]
+          ticketBody.sort = [{ field: 'lastActivityDate', direction: 'DESC' }]
         }
         
         const optimizedBody = enforceMaxRecords(ticketBody)
@@ -230,6 +231,44 @@ export function registerTools(server: McpServer) {
           tickets = []
         }
         
+        // Client-side sort by date as fallback (in case API doesn't respect sort parameter)
+        if (input.sortByDate !== false && tickets.length > 0) {
+          tickets.sort((a: any, b: any) => {
+            // Try multiple date fields in order of preference
+            const getDate = (ticket: any): Date | null => {
+              // Try lastActivityDate first (most recent activity)
+              if (ticket.lastActivityDate) {
+                const d = new Date(ticket.lastActivityDate)
+                if (!isNaN(d.getTime())) return d
+              }
+              // Fall back to createDate
+              if (ticket.createDate) {
+                const d = new Date(ticket.createDate)
+                if (!isNaN(d.getTime())) return d
+              }
+              // Try dateLastModified
+              if (ticket.dateLastModified) {
+                const d = new Date(ticket.dateLastModified)
+                if (!isNaN(d.getTime())) return d
+              }
+              return null
+            }
+            
+            const dateA = getDate(a)
+            const dateB = getDate(b)
+            
+            // If both have dates, sort DESC (most recent first)
+            if (dateA && dateB) {
+              return dateB.getTime() - dateA.getTime()
+            }
+            // If only one has a date, prioritize it
+            if (dateA && !dateB) return -1
+            if (!dateA && dateB) return 1
+            // If neither has a date, maintain original order
+            return 0
+          })
+        }
+        
         return {
           content: [
             {
@@ -240,9 +279,9 @@ export function registerTools(server: McpServer) {
                   companyID: companyId,
                   totalTicketsReturned: tickets.length,
                   maxRecordsRequested: input.maxRecords || 50,
-                  sortedBy: input.sortByDate !== false ? 'createDate DESC (most recent first)' : 'none',
+                  sortedBy: input.sortByDate !== false ? 'lastActivityDate/createDate DESC (most recent first, client-side sorted)' : 'none',
                   dateFilter: input.daysAgo ? `Last ${input.daysAgo} days` : 'All dates',
-                  note: 'These are the most recent tickets automatically sorted by date. No counting or enumeration needed - the tool handles all filtering server-side.',
+                  note: 'These are the most recent tickets automatically sorted by date (client-side fallback ensures correct order). No counting or enumeration needed - the tool handles all filtering server-side.',
                   tickets: tickets,
                 },
                 null,
@@ -1967,7 +2006,15 @@ export function registerTools(server: McpServer) {
     async (input, extra) => {
       try {
         const baseUrl = `https://webservices15.autotask.net/ATServicesRest/V1.0/Tickets/query`
-        const optimizedBody = enforceMaxRecords(input.body)
+        
+        // If no sort is specified and user likely wants recent tickets, add default sort by date
+        const bodyWithDefaults = { ...input.body }
+        if (!bodyWithDefaults.sort && (!bodyWithDefaults.filter || bodyWithDefaults.filter.length === 0)) {
+          // Default to sorting by date DESC for "most recent" queries
+          bodyWithDefaults.sort = [{ field: 'lastActivityDate', direction: 'DESC' }]
+        }
+        
+        const optimizedBody = enforceMaxRecords(bodyWithDefaults)
         const data = await callApi(baseUrl, {
           method: 'POST',
           headers: getAutotaskHeaders({ 'Content-Type': 'application/json' }),
@@ -1978,8 +2025,68 @@ export function registerTools(server: McpServer) {
         const formatted = formatResponse(data)
         const responseText = truncateResponse(formatted)
         
+        // Client-side sort as fallback if sort was requested
+        let sortedData = formatted
+        try {
+          const parsed = JSON.parse(responseText)
+          let tickets: any[] = []
+          
+          if (Array.isArray(parsed)) {
+            tickets = parsed
+          } else if (parsed && typeof parsed === 'object') {
+            tickets = (parsed as any).items || (parsed as any).data || [parsed]
+          }
+          
+          // Sort by date if sort was specified in request
+          if (optimizedBody.sort && tickets.length > 0) {
+            const sortField = optimizedBody.sort[0]?.field || 'lastActivityDate'
+            const sortDirection = optimizedBody.sort[0]?.direction || 'DESC'
+            
+            tickets.sort((a: any, b: any) => {
+              const getDate = (ticket: any): Date | null => {
+                // Try the specified sort field first
+                if (ticket[sortField]) {
+                  const d = new Date(ticket[sortField])
+                  if (!isNaN(d.getTime())) return d
+                }
+                // Fallback to common date fields
+                if (ticket.lastActivityDate) {
+                  const d = new Date(ticket.lastActivityDate)
+                  if (!isNaN(d.getTime())) return d
+                }
+                if (ticket.createDate) {
+                  const d = new Date(ticket.createDate)
+                  if (!isNaN(d.getTime())) return d
+                }
+                return null
+              }
+              
+              const dateA = getDate(a)
+              const dateB = getDate(b)
+              
+              if (dateA && dateB) {
+                return sortDirection === 'DESC' 
+                  ? dateB.getTime() - dateA.getTime()
+                  : dateA.getTime() - dateB.getTime()
+              }
+              if (dateA && !dateB) return -1
+              if (!dateA && dateB) return 1
+              return 0
+            })
+            
+            // Reconstruct the response with sorted tickets
+            if (Array.isArray(parsed)) {
+              sortedData = tickets
+            } else {
+              sortedData = { ...parsed, items: tickets, data: tickets }
+            }
+          }
+        } catch (e) {
+          // If parsing fails, use original formatted response
+        }
+        
         return {
-          content: [{ type: 'text', text: responseText }],
+          content: [{ type: 'text', text: JSON.stringify(sortedData, null, 2) }],
         }
       } catch (error) {
         const msg = error instanceof Error ? error.message : String(error)
