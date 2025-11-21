@@ -1637,7 +1637,7 @@ export function registerTools(server: McpServer) {
   )
   server.tool(
     'ticketsQuery',
-    `Query tickets with filters, sorting, and pagination. Use this for complex queries about tickets, their status, priority, categories, companies, contacts, or service calls. Always include maxRecords parameter (default is 20, maximum is 100) to limit response size. Returns ticket information including ID, number, title, status, priority, company, contact, dates, and category.`,
+    `Query tickets with filters, sorting, and pagination. Use this for complex queries about tickets, their status, priority, categories, companies, contacts, or service calls. When querying by company name, first use companiesQuery or companiesUrlParameterQuery to find the company ID, then use that ID in the filter with field "companyID". Always include maxRecords parameter (default is 20, maximum is 100) to limit response size. Returns ticket information including ID, number, title, status, priority, company, contact, dates, and category.`,
     {
       body: z.object({
         filter: z.array(z.any()).optional(),
@@ -1675,6 +1675,96 @@ export function registerTools(server: McpServer) {
                   message: msg,
                   suggestion:
                     'Check your filters and ensure maxRecords is set (recommended range is 20 to 50)',
+                },
+                null,
+                2,
+              ),
+            },
+          ],
+          isError: true,
+        }
+      }
+    },
+  )
+  server.tool(
+    'companiesQuery',
+    `Query companies with filters. Use this to find a company by name, account number, or other criteria. When a user asks for tickets by company name, first use this tool to find the company ID, then use ticketsQuery with that company ID. Always include maxRecords parameter (default is 20, maximum is 100). Returns company information including ID, companyName, accountNumber, phone, address, and other details.`,
+    {
+      body: z.object({
+        filter: z.array(z.any()).optional(),
+        maxRecords: z.number().max(100).optional(),
+        sort: z.array(z.any()).optional(),
+      }),
+    },
+    async (input, extra) => {
+      try {
+        const baseUrl = `https://webservices15.autotask.net/ATServicesRest/V1.0/Companies/query`
+        const optimizedBody = enforceMaxRecords(input.body)
+        const data = await callApi(baseUrl, {
+          method: 'POST',
+          headers: getAutotaskHeaders({ 'Content-Type': 'application/json' }),
+          body: JSON.stringify(optimizedBody),
+        })
+        
+        const formatted = formatResponse(data)
+        const responseText = truncateResponse(formatted)
+        
+        return {
+          content: [{ type: 'text', text: responseText }],
+        }
+      } catch (error) {
+        const msg = error instanceof Error ? error.message : String(error)
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify(
+                {
+                  error: 'Failed to query companies',
+                  message: msg,
+                  suggestion:
+                    'Check your filters and ensure maxRecords is set (recommended range is 20 to 50)',
+                },
+                null,
+                2,
+              ),
+            },
+          ],
+          isError: true,
+        }
+      }
+    },
+  )
+  server.tool(
+    'companiesUrlParameterQuery',
+    `Simple text search for companies by name. Use this to quickly find a company by searching for its name. When a user asks for tickets by company name, first use this tool to find the company, then use the company ID with ticketsQuery. Returns limited results.`,
+    { search: z.string() },
+    async (input, extra) => {
+      try {
+        const baseUrl = `https://webservices15.autotask.net/ATServicesRest/V1.0/Companies/query`
+        const data = await callApi(baseUrl, {
+          method: 'GET',
+          headers: getAutotaskHeaders(),
+          params: { search: input.search },
+        })
+        
+        const formatted = formatResponse(data)
+        const responseText = truncateResponse(formatted)
+        
+        return {
+          content: [{ type: 'text', text: responseText }],
+        }
+      } catch (error) {
+        const msg = error instanceof Error ? error.message : String(error)
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify(
+                {
+                  error: 'Failed to search companies',
+                  message: msg,
+                  suggestion: 'Try a more specific search term or use companiesQuery for complex searches',
                 },
                 null,
                 2,

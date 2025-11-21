@@ -269,6 +269,24 @@ export function registerResources(server: McpServer) {
                     input: 'id (string)',
                   },
                 ],
+                companyTools: [
+                  {
+                    name: 'companiesQuery',
+                    method: 'POST',
+                    description: 'Query companies with filters',
+                    useCase: 'Find companies by name, account number, or other criteria',
+                    input: 'body (object with filter, maxRecords, sort)',
+                    note: 'Use this to find company ID when user provides company name',
+                  },
+                  {
+                    name: 'companiesUrlParameterQuery',
+                    method: 'GET',
+                    description: 'Simple text search for companies by name',
+                    useCase: 'Quick search for company by name to get company ID',
+                    input: 'search (string parameter)',
+                    note: 'First step when user asks for tickets by company name',
+                  },
+                ],
                 categoryTools: [
                   {
                     name: 'ticketCategoriesQuery',
@@ -288,6 +306,13 @@ export function registerResources(server: McpServer) {
                   complexFiltering: 'Use *Query tools with body parameter',
                   countOnly: 'Use *QueryCount tools',
                   singleRecord: 'Use *QueryItem tools',
+                },
+                workflows: {
+                  ticketsByCompanyName: [
+                    'Step 1: Use companiesUrlParameterQuery with company name to find company',
+                    'Step 2: Extract company ID from the results',
+                    'Step 3: Use ticketsQuery with filter: [{"field": "companyID", "op": "eq", "value": "<id>"}], maxRecords: 5-20, sort: [{"field": "createDate", "direction": "DESC"}]',
+                  ],
                 },
               },
               null,
