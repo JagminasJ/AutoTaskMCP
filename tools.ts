@@ -103,6 +103,11 @@ export function registerTools(server: McpServer) {
         }
       } catch (error) {
         const msg = error instanceof Error ? error.message : String(error)
+        // Log the error for debugging
+        console.error('getTicketsByCompanyName error:', {
+          companyName: input.companyName,
+          error: msg,
+        })
         return {
           content: [
             {
@@ -111,7 +116,9 @@ export function registerTools(server: McpServer) {
                 {
                   error: 'Failed to get tickets by company name',
                   message: msg,
-                  suggestion: 'Verify the company name is correct',
+                  suggestion: 'Verify the company name is correct. If the company exists, try using a partial name or check spelling.',
+                  toolUsed: 'getTicketsByCompanyName',
+                  companyName: input.companyName,
                 },
                 null,
                 2,
@@ -1676,6 +1683,31 @@ export function registerTools(server: McpServer) {
     { body: z.any() },
     async (input, extra) => {
       try {
+        // Validate that filter doesn't contain companyName (which doesn't exist in Ticket entity)
+        if (input.body && typeof input.body === 'object') {
+          const bodyStr = JSON.stringify(input.body)
+          if (bodyStr.includes('companyName') || bodyStr.includes('"field":"companyName"')) {
+            return {
+              content: [
+                {
+                  type: 'text',
+                  text: JSON.stringify(
+                    {
+                      error: 'Invalid filter field',
+                      message: 'The field "companyName" does not exist in the Ticket entity. Tickets are filtered by "companyID", not "companyName".',
+                      suggestion: 'If you need tickets by company name, use the getTicketsByCompanyName tool instead. It will find the company ID automatically and return actual ticket details.',
+                      alternativeTool: 'getTicketsByCompanyName',
+                    },
+                    null,
+                    2,
+                  ),
+                },
+              ],
+              isError: true,
+            }
+          }
+        }
+
         const baseUrl = `https://webservices15.autotask.net/ATServicesRest/V1.0/Tickets/query/count`
         const data = await callApi(baseUrl, {
           method: 'POST',
@@ -1687,6 +1719,28 @@ export function registerTools(server: McpServer) {
         }
       } catch (error) {
         const msg = error instanceof Error ? error.message : String(error)
+        // Check if error mentions companyName
+        if (msg.includes('companyName') || msg.includes('Unable to find companyName')) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: JSON.stringify(
+                  {
+                    error: 'Invalid filter field',
+                    message: 'The field "companyName" does not exist in the Ticket entity. Tickets are filtered by "companyID", not "companyName".',
+                    suggestion: 'If you need tickets by company name, use the getTicketsByCompanyName tool instead. It will find the company ID automatically and return actual ticket details.',
+                    alternativeTool: 'getTicketsByCompanyName',
+                    originalError: msg,
+                  },
+                  null,
+                  2,
+                ),
+              },
+            ],
+            isError: true,
+          }
+        }
         return {
           content: [
             {
@@ -1695,7 +1749,7 @@ export function registerTools(server: McpServer) {
                 {
                   error: 'Failed to count tickets',
                   message: msg,
-                  suggestion: 'Check your filter criteria',
+                  suggestion: 'Check your filter criteria. Remember: tickets are filtered by companyID, not companyName. Use getTicketsByCompanyName tool for company name searches.',
                 },
                 null,
                 2,
