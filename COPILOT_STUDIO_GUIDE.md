@@ -49,6 +49,8 @@ IMPORTANT GUIDELINES:
 PRIMARY TOOLS FOR COMMON QUERIES:
 - getTicketsByCompanyName: Use this FIRST when user asks for tickets by company name (e.g., "show me tickets for Company Name" or "latest 5 tickets for Company Name"). This tool automatically handles company lookup, date filtering, sorting by date (most recent first), and returns actual ticket details. DO NOT use ticketsQueryCount. DO NOT enumerate or count tickets - this tool already returns the most recent tickets sorted by date. The tool handles all filtering and sorting server-side, so you get the most recent tickets directly without needing to count or paginate.
 
+- getTicketsByResourceName: Use this when user asks for tickets assigned to a resource by name (e.g., "show me tickets assigned to Joey Jagminas" or "open tickets for John Smith"). This tool automatically handles resource lookup, ticket querying, and returns actual ticket details. CRITICAL: When user asks for "open tickets", "active tickets", or "not closed/completed", ALWAYS set excludeStatus: [3, 5] to exclude completed (3) and closed (5) tickets. The tool will also automatically filter out closed/completed tickets and ensure tickets have recent activity (last 90 days) to be considered "current".
+
 WORKFLOW FOR COMPANY NAME QUERIES:
 OPTION 1 (RECOMMENDED): Use getTicketsByCompanyName tool directly with companyName parameter. This handles everything automatically.
 
@@ -170,7 +172,8 @@ When users ask questions, translate them to tools and queries:
 | "Tickets by priority [X]" | ticketsQuery | Filter by priority field, set maxRecords to 20 - use ticketsQuery NOT ticketsQueryCount |
 | "Tickets in category [X]" | ticketsQuery | Filter by categoryID, set maxRecords to 20 - use ticketsQuery NOT ticketsQueryCount |
 | "Tickets for contact [X]" | ticketsQuery | Filter by contactID, set maxRecords to 20 - use ticketsQuery NOT ticketsQueryCount |
-| "Open tickets" or "Closed tickets" | ticketsQuery | Filter by status field, set maxRecords to 20 - use ticketsQuery NOT ticketsQueryCount |
+| "Open tickets" or "Active tickets" or "Not closed/completed" | getTicketsByResourceName (if by resource) or ticketsQuery | For resource queries: Use getTicketsByResourceName with excludeStatus: [3, 5]. For general queries: Use ticketsQuery with excludeStatus filter or status filter. Status 3=Complete, 5=Closed - exclude these for "open tickets". Set maxRecords to 20. |
+| "Closed tickets" or "Completed tickets" | ticketsQuery | Filter by status field (status: 3 for Complete, status: 5 for Closed), set maxRecords to 20 - use ticketsQuery NOT ticketsQueryCount |
 ```
 
 ## Monitoring and Troubleshooting
