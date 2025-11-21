@@ -185,9 +185,12 @@ export function registerTools(server: McpServer) {
         
         // Step 2: Query tickets by company ID with automatic date filtering and sorting
         const ticketsUrl = `https://webservices15.autotask.net/ATServicesRest/V1.0/Tickets/query`
+        // Fetch MORE records than requested to ensure we get the most recent ones
+        // The API might not respect sort order, so we fetch more, sort client-side, then take top N
+        const fetchSize = Math.max((input.maxRecords || 5) * 3, 100) // Fetch 3x requested or at least 100
         const ticketBody: any = {
           filter: [{ field: 'companyID', op: 'eq', value: companyId }],
-          maxRecords: input.maxRecords || 50, // Increased default to 50 for better results
+          maxRecords: fetchSize, // Fetch more to ensure we get recent tickets
         }
         
         // Add date filter ONLY if daysAgo is explicitly provided
@@ -346,6 +349,13 @@ export function registerTools(server: McpServer) {
               createDate: t.createDate,
             }))
             console.log(`[getTicketsByCompanyName] Sample tickets after sort:`, JSON.stringify(sampleDates, null, 2))
+          }
+          
+          // After sorting, take only the requested number of tickets (most recent first)
+          const requestedCount = input.maxRecords || 5
+          if (tickets.length > requestedCount) {
+            console.log(`[getTicketsByCompanyName] Taking top ${requestedCount} tickets from ${tickets.length} sorted tickets`)
+            tickets = tickets.slice(0, requestedCount)
           }
         }
         
