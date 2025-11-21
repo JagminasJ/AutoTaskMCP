@@ -10,6 +10,120 @@ import {
 } from './response-utils.js'
 
 export function registerTools(server: McpServer) {
+  // PRIMARY TOOL - Place at top for visibility
+  server.tool(
+    'getTicketsByCompanyName',
+    `⚠️ USE THIS TOOL when user asks for tickets by company name (e.g., "show me tickets for Company Name" or "latest 5 tickets for Company Name"). This tool automatically finds the company and returns ACTUAL TICKET DETAILS. DO NOT use ticketsQueryCount - that returns only a number. This tool handles company lookup and ticket query automatically. Returns full ticket records with ID, number, title, status, priority, dates, etc.`,
+    {
+      companyName: z.string().describe('The name of the company to search for'),
+      maxRecords: z.number().max(100).optional().describe('Number of tickets to return (default: 20, max: 100)'),
+      sortByDate: z.boolean().optional().describe('Sort by create date descending (default: true)'),
+    },
+    async (input, extra) => {
+      try {
+        // Step 1: Find company by name
+        const companySearchUrl = `https://webservices15.autotask.net/ATServicesRest/V1.0/Companies/query`
+        const companyData = await callApi(companySearchUrl, {
+          method: 'GET',
+          headers: getAutotaskHeaders(),
+          params: { search: input.companyName },
+        })
+        
+        // Extract company ID - handle different response formats
+        let companyId: string | null = null
+        if (Array.isArray(companyData) && companyData.length > 0) {
+          const firstCompany = companyData[0]
+          companyId = firstCompany.id?.toString() || firstCompany.companyID?.toString() || firstCompany.ID?.toString() || null
+        } else if (companyData && typeof companyData === 'object') {
+          // Handle object response
+          if ('items' in companyData && Array.isArray(companyData.items) && companyData.items.length > 0) {
+            const firstCompany = companyData.items[0]
+            companyId = firstCompany.id?.toString() || firstCompany.companyID?.toString() || firstCompany.ID?.toString() || null
+          } else {
+            companyId = (companyData as any).id?.toString() || (companyData as any).companyID?.toString() || (companyData as any).ID?.toString() || null
+          }
+        }
+        
+        if (!companyId) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: JSON.stringify(
+                  {
+                    error: 'Company not found',
+                    message: `Could not find a company matching "${input.companyName}"`,
+                    suggestion: 'Check the company name spelling or try a partial name',
+                  },
+                  null,
+                  2,
+                ),
+              },
+            ],
+            isError: true,
+          }
+        }
+        
+        // Step 2: Query tickets by company ID
+        const ticketsUrl = `https://webservices15.autotask.net/ATServicesRest/V1.0/Tickets/query`
+        const ticketBody: any = {
+          filter: [{ field: 'companyID', op: 'eq', value: companyId }],
+          maxRecords: input.maxRecords || 20,
+        }
+        
+        if (input.sortByDate !== false) {
+          ticketBody.sort = [{ field: 'createDate', direction: 'DESC' }]
+        }
+        
+        const optimizedBody = enforceMaxRecords(ticketBody)
+        const ticketData = await callApi(ticketsUrl, {
+          method: 'POST',
+          headers: getAutotaskHeaders({ 'Content-Type': 'application/json' }),
+          body: JSON.stringify(optimizedBody),
+        })
+        
+        const formatted = formatResponse(ticketData)
+        const responseText = truncateResponse(formatted)
+        
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify(
+                {
+                  companyName: input.companyName,
+                  companyID: companyId,
+                  tickets: JSON.parse(responseText),
+                },
+                null,
+                2,
+              ),
+            },
+          ],
+        }
+      } catch (error) {
+        const msg = error instanceof Error ? error.message : String(error)
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify(
+                {
+                  error: 'Failed to get tickets by company name',
+                  message: msg,
+                  suggestion: 'Verify the company name is correct',
+                },
+                null,
+                2,
+              ),
+            },
+          ],
+          isError: true,
+        }
+      }
+    },
+  )
+  
   server.tool(
     'ticketCategoriesUrlParameterQueryCount',
     `Generated from Postman`,
@@ -1558,7 +1672,7 @@ export function registerTools(server: McpServer) {
   )
   server.tool(
     'ticketsQueryCount',
-    `ONLY use this when the user explicitly asks "how many" or "count" tickets. This returns ONLY a number, NOT ticket details. DO NOT use this when user asks to "show", "list", "get", "find", or "retrieve" tickets - use ticketsQuery instead. This tool returns only a count number, never ticket information.`,
+    `⚠️ WARNING: This tool returns ONLY a number count, NEVER ticket details. ONLY use when user explicitly asks "how many" or "count" tickets. DO NOT use for "show", "list", "get", "find", "retrieve", "latest", or "recent" tickets. DO NOT use when user provides a company name - use getTicketsByCompanyName instead. This tool cannot filter by companyName field (that field does not exist in tickets).`,
     { body: z.any() },
     async (input, extra) => {
       try {
@@ -1624,112 +1738,6 @@ export function registerTools(server: McpServer) {
                   error: 'Failed to search tickets',
                   message: msg,
                   suggestion: 'Try a more specific search term or use ticketsQuery for complex searches',
-                },
-                null,
-                2,
-              ),
-            },
-          ],
-          isError: true,
-        }
-      }
-    },
-  )
-  // Helper tool for common workflow: tickets by company name
-  server.tool(
-    'getTicketsByCompanyName',
-    `PRIMARY TOOL: Get tickets by company name. Use this when user asks for tickets from a specific company by name (e.g., "show me tickets for Company Name" or "latest 5 tickets for Company Name"). This tool automatically finds the company and returns actual ticket details. Returns full ticket records with all details. DO NOT use ticketsQueryCount - this tool returns actual ticket information.`,
-    {
-      companyName: z.string().describe('The name of the company to search for'),
-      maxRecords: z.number().max(100).optional().describe('Number of tickets to return (default: 20, max: 100)'),
-      sortByDate: z.boolean().optional().describe('Sort by create date descending (default: true)'),
-    },
-    async (input, extra) => {
-      try {
-        // Step 1: Find company by name
-        const companySearchUrl = `https://webservices15.autotask.net/ATServicesRest/V1.0/Companies/query`
-        const companyData = await callApi(companySearchUrl, {
-          method: 'GET',
-          headers: getAutotaskHeaders(),
-          params: { search: input.companyName },
-        })
-        
-        // Extract company ID
-        let companyId: string | null = null
-        if (Array.isArray(companyData) && companyData.length > 0) {
-          companyId = companyData[0].id?.toString() || companyData[0].companyID?.toString() || null
-        } else if (companyData && typeof companyData === 'object' && 'id' in companyData) {
-          companyId = companyData.id?.toString() || companyData.companyID?.toString() || null
-        }
-        
-        if (!companyId) {
-          return {
-            content: [
-              {
-                type: 'text',
-                text: JSON.stringify(
-                  {
-                    error: 'Company not found',
-                    message: `Could not find a company matching "${input.companyName}"`,
-                    suggestion: 'Check the company name spelling or try a partial name',
-                  },
-                  null,
-                  2,
-                ),
-              },
-            ],
-            isError: true,
-          }
-        }
-        
-        // Step 2: Query tickets by company ID
-        const ticketsUrl = `https://webservices15.autotask.net/ATServicesRest/V1.0/Tickets/query`
-        const ticketBody: any = {
-          filter: [{ field: 'companyID', op: 'eq', value: companyId }],
-          maxRecords: input.maxRecords || 20,
-        }
-        
-        if (input.sortByDate !== false) {
-          ticketBody.sort = [{ field: 'createDate', direction: 'DESC' }]
-        }
-        
-        const optimizedBody = enforceMaxRecords(ticketBody)
-        const ticketData = await callApi(ticketsUrl, {
-          method: 'POST',
-          headers: getAutotaskHeaders({ 'Content-Type': 'application/json' }),
-          body: JSON.stringify(optimizedBody),
-        })
-        
-        const formatted = formatResponse(ticketData)
-        const responseText = truncateResponse(formatted)
-        
-        return {
-          content: [
-            {
-              type: 'text',
-              text: JSON.stringify(
-                {
-                  companyName: input.companyName,
-                  companyID: companyId,
-                  tickets: JSON.parse(responseText),
-                },
-                null,
-                2,
-              ),
-            },
-          ],
-        }
-      } catch (error) {
-        const msg = error instanceof Error ? error.message : String(error)
-        return {
-          content: [
-            {
-              type: 'text',
-              text: JSON.stringify(
-                {
-                  error: 'Failed to get tickets by company name',
-                  message: msg,
-                  suggestion: 'Verify the company name is correct',
                 },
                 null,
                 2,
