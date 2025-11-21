@@ -145,14 +145,15 @@ When users ask questions, translate them to tools and queries:
 
 | User Question Pattern | Use Tool | Query Approach |
 |----------------------|----------|---------------|
-| "How many tickets..." | ticketsQueryCount | Filter by criteria, maxRecords not needed |
-| "Show me tickets for [Company]" | ticketsQuery | Filter by companyID, set maxRecords to 20-50 |
+| "How many tickets..." or "Count tickets..." | ticketsQueryCount | Filter by criteria, maxRecords not needed - returns ONLY a number, NOT ticket details |
+| "Show me tickets..." or "List tickets..." or "Get tickets..." or "Latest X tickets..." | ticketsQuery | Use ticketsQuery to get actual ticket details, NOT ticketsQueryCount |
+| "Show me tickets for [Company Name]" | First companiesUrlParameterQuery, then ticketsQuery | Search company by name first, get company ID, then use ticketsQuery (NOT ticketsQueryCount) with companyID filter, maxRecords 5-20, sort DESC |
 | "What's the status of ticket [X]" | ticketsQueryItem | Use ticket ID or number |
-| "Recent tickets" or "Latest tickets" | ticketsQuery | Filter by createDate (last 7-30 days), sort DESC, set maxRecords to 10-20 |
-| "Tickets by priority [X]" | ticketsQuery | Filter by priority field, set maxRecords to 20 |
-| "Tickets in category [X]" | ticketsQuery | Filter by categoryID, set maxRecords to 20 |
-| "Tickets for contact [X]" | ticketsQuery | Filter by contactID, set maxRecords to 20 |
-| "Open tickets" or "Closed tickets" | ticketsQuery | Filter by status field, set maxRecords to 20 |
+| "Recent tickets" or "Latest tickets" | ticketsQuery | Filter by createDate (last 7-30 days), sort DESC, set maxRecords to 10-20 - use ticketsQuery NOT ticketsQueryCount |
+| "Tickets by priority [X]" | ticketsQuery | Filter by priority field, set maxRecords to 20 - use ticketsQuery NOT ticketsQueryCount |
+| "Tickets in category [X]" | ticketsQuery | Filter by categoryID, set maxRecords to 20 - use ticketsQuery NOT ticketsQueryCount |
+| "Tickets for contact [X]" | ticketsQuery | Filter by contactID, set maxRecords to 20 - use ticketsQuery NOT ticketsQueryCount |
+| "Open tickets" or "Closed tickets" | ticketsQuery | Filter by status field, set maxRecords to 20 - use ticketsQuery NOT ticketsQueryCount |
 ```
 
 ## Monitoring and Troubleshooting
