@@ -193,46 +193,18 @@ export function registerTools(server: McpServer) {
           maxRecords: fetchSize, // Fetch more to ensure we get recent tickets
         }
         
-        // Add date filter
-        // Default: Exclude tickets older than 2023-01-01 to avoid very old/invalid dates
-        // If daysAgo is explicitly provided, use that instead
-        // If daysAgo is explicitly 0, don't filter (return all tickets)
+        // Note: We do NOT filter by lastActivityDate on the server side because:
+        // 1. The Autotask API may not support filtering on lastActivityDate
+        // 2. We'll do all date filtering client-side after fetching tickets
+        // This ensures we get tickets even if the API doesn't support the date filter
         const daysToFilter = input.daysAgo
-        if (daysToFilter === 0) {
-          // Explicitly requested no filter
-          console.log(`[getTicketsByCompanyName] No date filter applied (daysAgo=0)`)
-        } else if (daysToFilter !== undefined && daysToFilter > 0) {
-          // User specified a time period
-          const cutoffDate = new Date()
-          cutoffDate.setDate(cutoffDate.getDate() - daysToFilter)
-          cutoffDate.setHours(0, 0, 0, 0)
-          const cutoffDateStr = cutoffDate.toISOString()
-          
-          console.log(`[getTicketsByCompanyName] Filtering tickets: lastActivityDate >= ${cutoffDateStr} (last ${daysToFilter} days)`)
-          
-          ticketBody.filter.push({
-            field: 'lastActivityDate',
-            op: 'gte',
-            value: cutoffDateStr,
-          })
-        } else {
-          // Default: Exclude tickets older than 2023-01-01 to avoid very old/invalid dates
-          const defaultCutoffDate = new Date('2023-01-01T00:00:00.000Z')
-          const defaultCutoffDateStr = defaultCutoffDate.toISOString()
-          
-          console.log(`[getTicketsByCompanyName] Applying default date filter: lastActivityDate >= ${defaultCutoffDateStr} (exclude tickets older than 2023-01-01)`)
-          
-          ticketBody.filter.push({
-            field: 'lastActivityDate',
-            op: 'gte',
-            value: defaultCutoffDateStr,
-          })
-        }
+        console.log(`[getTicketsByCompanyName] No server-side date filter (will filter client-side). daysAgo: ${daysToFilter}`)
         
-        // Always sort by date DESC to get most recent first (unless explicitly disabled)
-        // Use lastActivityDate for most recent activity, fallback to createDate
+        // Try to sort by createDate on server side (more likely to be supported)
+        // We'll re-sort by lastActivityDate client-side for better accuracy
         if (input.sortByDate !== false) {
-          ticketBody.sort = [{ field: 'lastActivityDate', direction: 'DESC' }]
+          ticketBody.sort = [{ field: 'createDate', direction: 'DESC' }]
+          console.log(`[getTicketsByCompanyName] Server-side sort: createDate DESC (will re-sort by lastActivityDate client-side)`)
         }
         
         const optimizedBody = enforceMaxRecords(ticketBody)
@@ -409,8 +381,8 @@ export function registerTools(server: McpServer) {
                   dateFilter: input.daysAgo === 0 
                     ? 'No date filter (explicitly requested)' 
                     : input.daysAgo !== undefined && input.daysAgo > 0 
-                      ? `Last ${input.daysAgo} days (filtered by lastActivityDate)` 
-                      : 'Default filter: tickets from 2023-01-01 onwards (excludes very old/invalid dates)',
+                      ? `Last ${input.daysAgo} days (filtered client-side by lastActivityDate)` 
+                      : 'Default filter: tickets from 2023-01-01 onwards (filtered client-side, excludes very old/invalid dates)',
                   dateRange: tickets.length > 0 ? (() => {
                     // Only use valid dates (not null, not epoch, not invalid)
                     const dates = tickets.map((t: any) => {
