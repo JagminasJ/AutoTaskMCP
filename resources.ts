@@ -247,6 +247,14 @@ export function registerResources(server: McpServer) {
                     input: 'companyName (string), maxRecords (optional number), sortByDate (optional boolean)',
                     note: 'This tool handles company lookup and ticket query automatically. Returns actual ticket details, NOT a count.',
                   },
+                  {
+                    name: 'getTicketsByResourceName',
+                    method: 'POST',
+                    description: 'PRIMARY TOOL: Get tickets by resource name - automatically finds resource and returns ticket details',
+                    useCase: 'When user asks for tickets assigned to a resource by name (e.g., "show me tickets assigned to Joey Jagminas" or "tickets for John Smith with due date before 11/21/25")',
+                    input: 'resourceName (string), maxRecords (optional number), dueDateBefore (optional string), dueDateAfter (optional string), sortByDate (optional boolean)',
+                    note: 'This tool handles resource lookup and ticket query automatically. Supports filtering by due date. Returns actual ticket details, NOT a count.',
+                  },
                 ],
                 ticketTools: [
                   {

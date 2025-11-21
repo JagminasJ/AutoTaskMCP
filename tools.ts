@@ -533,6 +533,455 @@ export function registerTools(server: McpServer) {
       }
     },
   )
+
+  // PRIMARY TOOL - Get tickets by resource name
+  server.tool(
+    'getTicketsByResourceName',
+    `PRIMARY TOOL for tickets by resource name. Use this when user asks for tickets assigned to a resource by name (e.g., "show me tickets assigned to John Smith", "tickets for Joey Jagminas", "all tickets assigned to resource name"). This tool AUTOMATICALLY handles everything: finds the resource by name, queries tickets by assignedResourceID, applies date filters if specified, and returns ACTUAL TICKET DETAILS. Supports filtering by due date (dueDateTime field). DO NOT use ticketsQueryCount - that returns only a number and cannot filter by resource name. Tickets are filtered by assignedResourceID, not resourceName.`,
+    {
+      resourceName: z.string().describe('The name of the resource to search for (e.g., "Joey Jagminas", "John Smith")'),
+      maxRecords: z.number().max(500).optional().describe('Number of tickets to return (default: 50, max: 500). The tool automatically sorts by createDate DESC, so this returns the N most recent tickets.'),
+      sortByDate: z.boolean().optional().describe('Sort by createDate descending (default: true). When true, returns most recently created tickets first.'),
+      dueDateBefore: z.string().optional().describe('Optional: Filter tickets with due date before this date (ISO format, e.g., "2025-11-21T00:00:00.000Z" or "2025-11-21"). Use this when user asks for tickets with "due date before X" or "overdue".'),
+      dueDateAfter: z.string().optional().describe('Optional: Filter tickets with due date after this date (ISO format, e.g., "2025-01-01T00:00:00.000Z" or "2025-01-01"). Use this when user asks for tickets with "due date after X".'),
+      daysAgo: z.number().optional().describe('ONLY use when user explicitly mentions a time period (e.g., "last 30 days" = 30, "last month" = 30, "last year" = 365). For "most recent" or "latest" queries without a time period, DO NOT set this parameter - leave it undefined. The tool will return all tickets sorted by date (most recent first) without any date filtering.'),
+    },
+    async (input, extra) => {
+      try {
+        // Step 1: Find resource by name - try multiple search strategies
+        const resourceSearchUrl = `https://webservices15.autotask.net/ATServicesRest/V1.0/Resources/query`
+        let resourceData: any = null
+        let resourceIdNum: number | null = null
+        let allResources: any[] = []
+        
+        // Strategy 1: Try GET with search parameter (simple text search)
+        try {
+          resourceData = await callApi(resourceSearchUrl, {
+            method: 'GET',
+            headers: getAutotaskHeaders(),
+            params: { search: input.resourceName },
+          })
+          
+          // Collect all results
+          if (Array.isArray(resourceData)) {
+            allResources = resourceData
+          } else if (resourceData && typeof resourceData === 'object') {
+            if ('items' in resourceData && Array.isArray(resourceData.items)) {
+              allResources = resourceData.items
+            } else if (Array.isArray((resourceData as any).data)) {
+              allResources = (resourceData as any).data
+            }
+          }
+        } catch (error) {
+          console.log('GET search failed, trying POST query:', error)
+        }
+        
+        // Strategy 2: If no results, try POST query with contains filter (case-insensitive partial match)
+        if (allResources.length === 0) {
+          try {
+            const searchTerms = input.resourceName.split(/\s+/).filter(t => t.length > 0)
+            // Try searching for each word in the resource name
+            for (const term of searchTerms) {
+              const postData = {
+                filter: [
+                  {
+                    field: 'userName',
+                    op: 'contains',
+                    value: term,
+                  },
+                ],
+                maxRecords: 20,
+              }
+              
+              resourceData = await callApi(resourceSearchUrl, {
+                method: 'POST',
+                headers: getAutotaskHeaders({ 'Content-Type': 'application/json' }),
+                body: JSON.stringify(postData),
+              })
+              
+              if (Array.isArray(resourceData)) {
+                allResources = resourceData
+              } else if (resourceData && typeof resourceData === 'object') {
+                if ('items' in resourceData && Array.isArray(resourceData.items)) {
+                  allResources = resourceData.items
+                } else if (Array.isArray((resourceData as any).data)) {
+                  allResources = (resourceData as any).data
+                }
+              }
+              
+              if (allResources.length > 0) break
+            }
+          } catch (error) {
+            console.log('POST query failed:', error)
+          }
+        }
+        
+        // Strategy 3: Try exact match (case-insensitive)
+        if (allResources.length === 0) {
+          try {
+            const postData = {
+              filter: [
+                {
+                  field: 'userName',
+                  op: 'eq',
+                  value: input.resourceName,
+                },
+              ],
+              maxRecords: 10,
+            }
+            
+            resourceData = await callApi(resourceSearchUrl, {
+              method: 'POST',
+              headers: getAutotaskHeaders({ 'Content-Type': 'application/json' }),
+              body: JSON.stringify(postData),
+            })
+            
+            if (Array.isArray(resourceData)) {
+              allResources = resourceData
+            } else if (resourceData && typeof resourceData === 'object') {
+              if ('items' in resourceData && Array.isArray(resourceData.items)) {
+                allResources = resourceData.items
+              } else if (Array.isArray((resourceData as any).data)) {
+                allResources = (resourceData as any).data
+              }
+            }
+          } catch (error) {
+            console.log('Exact match query failed:', error)
+          }
+        }
+        
+        // Find best match (exact match first, then partial)
+        let bestMatch: any = null
+        const searchNameLower = input.resourceName.toLowerCase().trim()
+        
+        // First try exact match (case-insensitive) on userName or firstName/lastName
+        bestMatch = allResources.find((r: any) => {
+          const userName = (r.userName || '').toLowerCase().trim()
+          const firstName = (r.firstName || '').toLowerCase().trim()
+          const lastName = (r.lastName || '').toLowerCase().trim()
+          const fullName = `${firstName} ${lastName}`.trim().toLowerCase()
+          return userName === searchNameLower || fullName === searchNameLower
+        })
+        
+        // If no exact match, try contains match
+        if (!bestMatch) {
+          bestMatch = allResources.find((r: any) => {
+            const userName = (r.userName || '').toLowerCase().trim()
+            const firstName = (r.firstName || '').toLowerCase().trim()
+            const lastName = (r.lastName || '').toLowerCase().trim()
+            const fullName = `${firstName} ${lastName}`.trim().toLowerCase()
+            return userName.includes(searchNameLower) || 
+                   searchNameLower.includes(userName) ||
+                   fullName.includes(searchNameLower) ||
+                   searchNameLower.includes(fullName)
+          })
+        }
+        
+        // If still no match, use first result
+        if (!bestMatch && allResources.length > 0) {
+          bestMatch = allResources[0]
+        }
+        
+        // Extract resource ID
+        let resourceId: string | null = null
+        if (bestMatch) {
+          resourceIdNum = bestMatch.id || bestMatch.resourceID || bestMatch.ID || null
+          resourceId = resourceIdNum?.toString() || null
+        }
+        
+        if (!resourceId || !resourceIdNum) {
+          // Provide helpful suggestions
+          const suggestions = allResources.length > 0 
+            ? allResources.slice(0, 5).map((r: any) => r.userName || `${r.firstName || ''} ${r.lastName || ''}`.trim() || 'Unknown').filter(Boolean)
+            : []
+          
+          return {
+            content: [
+              {
+                type: 'text',
+                text: JSON.stringify(
+                  {
+                    error: 'Resource not found',
+                    message: `Could not find a resource matching "${input.resourceName}"`,
+                    searchedName: input.resourceName,
+                    suggestions: suggestions.length > 0 
+                      ? `Found ${suggestions.length} similar resources: ${suggestions.join(', ')}`
+                      : 'No similar resources found',
+                    recommendation: suggestions.length > 0
+                      ? `Try using one of the suggested resource names above, or use a partial name like "${input.resourceName.split(' ')[0]}"`
+                      : 'Check the resource name spelling or try searching with a partial name',
+                  },
+                  null,
+                  2,
+                ),
+              },
+            ],
+            isError: true,
+          }
+        }
+        
+        // Step 2: Query tickets by resource ID with filters
+        const ticketsUrl = `https://webservices15.autotask.net/ATServicesRest/V1.0/Tickets/query`
+        const fetchSize = 500 // Autotask API max
+        const ticketBody: any = {
+          filter: [{ field: 'assignedResourceID', op: 'eq', value: resourceIdNum }], // Use number, not string
+          maxRecords: fetchSize,
+        }
+        
+        // Add date filter - default to 2025-01-01 to ensure we only get tickets from this year
+        const daysToFilter = input.daysAgo
+        if (daysToFilter === 0) {
+          console.log(`[getTicketsByResourceName] No date filter applied (daysAgo=0)`)
+        } else if (daysToFilter !== undefined && daysToFilter > 0) {
+          const cutoffDate = new Date()
+          cutoffDate.setDate(cutoffDate.getDate() - daysToFilter)
+          cutoffDate.setHours(0, 0, 0, 0)
+          const cutoffDateStr = cutoffDate.toISOString()
+          
+          console.log(`[getTicketsByResourceName] Filtering tickets: createDate >= ${cutoffDateStr} (last ${daysToFilter} days)`)
+          
+          ticketBody.filter.push({
+            field: 'createDate',
+            op: 'gte',
+            value: cutoffDateStr,
+          })
+        } else {
+          // Default: Only get tickets from 2025-01-01 onwards (this year)
+          const defaultCutoffDate = new Date('2025-01-01T00:00:00.000Z')
+          const defaultCutoffDateStr = defaultCutoffDate.toISOString()
+          
+          console.log(`[getTicketsByResourceName] Applying default date filter: createDate >= ${defaultCutoffDateStr} (tickets from 2025 onwards)`)
+          
+          ticketBody.filter.push({
+            field: 'createDate',
+            op: 'gte',
+            value: defaultCutoffDateStr,
+          })
+        }
+        
+        // Add due date filters if specified
+        if (input.dueDateBefore) {
+          const dueDate = new Date(input.dueDateBefore)
+          if (!isNaN(dueDate.getTime())) {
+            const dueDateStr = dueDate.toISOString()
+            console.log(`[getTicketsByResourceName] Filtering tickets: dueDateTime < ${dueDateStr}`)
+            ticketBody.filter.push({
+              field: 'dueDateTime',
+              op: 'lt',
+              value: dueDateStr,
+            })
+          }
+        }
+        
+        if (input.dueDateAfter) {
+          const dueDate = new Date(input.dueDateAfter)
+          if (!isNaN(dueDate.getTime())) {
+            const dueDateStr = dueDate.toISOString()
+            console.log(`[getTicketsByResourceName] Filtering tickets: dueDateTime > ${dueDateStr}`)
+            ticketBody.filter.push({
+              field: 'dueDateTime',
+              op: 'gt',
+              value: dueDateStr,
+            })
+          }
+        }
+        
+        // Try server-side sorting by createDate DESC
+        if (input.sortByDate !== false) {
+          ticketBody.sort = [{ field: 'createDate', direction: 'DESC' }]
+          console.log(`[getTicketsByResourceName] Server-side sort: createDate DESC (will also sort client-side as fallback)`)
+        }
+        
+        console.log(`[getTicketsByResourceName] Querying tickets for resource ${resourceId} with body:`, JSON.stringify(ticketBody, null, 2))
+        
+        const ticketData = await callApi(ticketsUrl, {
+          method: 'POST',
+          headers: getAutotaskHeaders({ 'Content-Type': 'application/json' }),
+          body: JSON.stringify(ticketBody),
+        })
+        
+        console.log(`[getTicketsByResourceName] API returned ${Array.isArray(ticketData) ? ticketData.length : 'non-array'} tickets`)
+        
+        // Handle API response
+        let tickets: any[] = []
+        if (Array.isArray(ticketData)) {
+          tickets = ticketData
+          console.log(`[getTicketsByResourceName] API returned array with ${tickets.length} tickets`)
+        } else if (ticketData && typeof ticketData === 'object') {
+          if (Array.isArray(ticketData.items)) {
+            tickets = ticketData.items
+            console.log(`[getTicketsByResourceName] Found tickets in .items: ${tickets.length}`)
+          } else if (Array.isArray(ticketData.data)) {
+            tickets = ticketData.data
+            console.log(`[getTicketsByResourceName] Found tickets in .data: ${tickets.length}`)
+          } else if (Array.isArray(ticketData.records)) {
+            tickets = ticketData.records
+            console.log(`[getTicketsByResourceName] Found tickets in .records: ${tickets.length}`)
+          } else if (ticketData.id || ticketData.ticketNumber) {
+            tickets = [ticketData]
+            console.log(`[getTicketsByResourceName] Treated as single ticket`)
+          }
+        }
+        
+        console.log(`[getTicketsByResourceName] Parsed ${tickets.length} tickets from API response`)
+        
+        // Client-side date filter as fallback
+        if (tickets.length > 0) {
+          const beforeFilter = tickets.length
+          let cutoffDate: Date | null = null
+          
+          if (daysToFilter === 0) {
+            cutoffDate = null
+          } else if (daysToFilter !== undefined && daysToFilter > 0) {
+            cutoffDate = new Date()
+            cutoffDate.setDate(cutoffDate.getDate() - daysToFilter)
+            cutoffDate.setHours(0, 0, 0, 0)
+          } else {
+            cutoffDate = new Date('2025-01-01T00:00:00.000Z')
+          }
+          
+          tickets = tickets.filter((ticket: any) => {
+            let ticketDate: Date | null = null
+            
+            if (ticket.createDate) {
+              const d = new Date(ticket.createDate)
+              if (!isNaN(d.getTime()) && d.getTime() > 0) {
+                ticketDate = d
+              }
+            }
+            
+            if (!ticketDate && ticket.lastActivityDate) {
+              const d = new Date(ticket.lastActivityDate)
+              if (!isNaN(d.getTime()) && d.getTime() > 0) {
+                ticketDate = d
+              }
+            }
+            
+            if (!ticketDate) {
+              return false
+            }
+            
+            if (cutoffDate && ticketDate < cutoffDate) {
+              return false
+            }
+            
+            // Client-side due date filter as fallback
+            if (input.dueDateBefore && ticket.dueDateTime) {
+              const dueDate = new Date(ticket.dueDateTime)
+              const beforeDate = new Date(input.dueDateBefore)
+              if (!isNaN(dueDate.getTime()) && !isNaN(beforeDate.getTime())) {
+                if (dueDate >= beforeDate) {
+                  return false
+                }
+              }
+            }
+            
+            if (input.dueDateAfter && ticket.dueDateTime) {
+              const dueDate = new Date(ticket.dueDateTime)
+              const afterDate = new Date(input.dueDateAfter)
+              if (!isNaN(dueDate.getTime()) && !isNaN(afterDate.getTime())) {
+                if (dueDate <= afterDate) {
+                  return false
+                }
+              }
+            }
+            
+            return true
+          })
+          
+          console.log(`[getTicketsByResourceName] After filtering: ${tickets.length} tickets remaining (from ${beforeFilter} total)`)
+        }
+        
+        // Client-side sort by createDate DESC
+        if (input.sortByDate !== false && tickets.length > 0) {
+          tickets.sort((a: any, b: any) => {
+            const getDate = (ticket: any): Date | null => {
+              if (ticket.createDate) {
+                const d = new Date(ticket.createDate)
+                if (!isNaN(d.getTime())) return d
+              }
+              if (ticket.lastActivityDate) {
+                const d = new Date(ticket.lastActivityDate)
+                if (!isNaN(d.getTime())) return d
+              }
+              return null
+            }
+            
+            const dateA = getDate(a)
+            const dateB = getDate(b)
+            
+            if (dateA && dateB) {
+              return dateB.getTime() - dateA.getTime()
+            }
+            if (dateA && !dateB) return -1
+            if (!dateA && dateB) return 1
+            return 0
+          })
+          
+          // Take only the requested number of tickets
+          const requestedCount = input.maxRecords || 50
+          if (tickets.length > requestedCount) {
+            tickets = tickets.slice(0, requestedCount)
+          }
+        }
+        
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify(
+                {
+                  resourceName: input.resourceName,
+                  resourceID: resourceId,
+                  totalTicketsReturned: tickets.length,
+                  maxRecordsRequested: input.maxRecords || 50,
+                  sortedBy: input.sortByDate !== false ? 'createDate DESC (most recently created first, client-side sorted)' : 'none',
+                  dateFilter: daysToFilter === 0 
+                    ? 'No date filter (explicitly requested)' 
+                    : daysToFilter !== undefined && daysToFilter > 0 
+                      ? `Last ${daysToFilter} days (filtered by createDate)` 
+                      : 'Default filter: tickets from 2025-01-01 onwards (this year only)',
+                  dueDateFilter: input.dueDateBefore 
+                    ? `Due date before ${input.dueDateBefore}` 
+                    : input.dueDateAfter 
+                      ? `Due date after ${input.dueDateAfter}` 
+                      : 'No due date filter',
+                  tickets: tickets,
+                },
+                null,
+                2,
+              ),
+            },
+          ],
+        }
+      } catch (error) {
+        const msg = error instanceof Error ? error.message : String(error)
+        console.error('getTicketsByResourceName error:', {
+          resourceName: input.resourceName,
+          error: msg,
+        })
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify(
+                {
+                  error: 'Failed to get tickets by resource name',
+                  message: msg,
+                  suggestion: 'Verify the resource name is correct. If the resource exists, try using a partial name or check spelling.',
+                  toolUsed: 'getTicketsByResourceName',
+                  resourceName: input.resourceName,
+                },
+                null,
+                2,
+              ),
+            },
+          ],
+          isError: true,
+        }
+      }
+    },
+  )
   
   server.tool(
     'ticketCategoriesUrlParameterQueryCount',
