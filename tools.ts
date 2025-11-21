@@ -1087,6 +1087,236 @@ export function registerTools(server: McpServer) {
       }
     },
   )
+
+  // PRIMARY TOOL - Get tickets created today with specific fields
+  server.tool(
+    'getTicketsCreatedToday',
+    `PRIMARY TOOL for tickets created today. Use this when user asks for "tickets created today", "today's tickets", or "tickets from today". This tool automatically filters by createDate = today, returns only essential fields (company name, ticket number, sender, description), and handles company/contact name lookups. Returns ACTUAL TICKET DETAILS, NOT a count. DO NOT use ticketsQueryCount - that returns only a number.`,
+    {
+      fields: z.array(z.string()).optional().describe('Optional: Specific fields to return. Default: ["ticketNumber", "title", "companyName", "contactName", "description", "createDate", "status", "priority"]. Common fields: ticketNumber, title, companyName, contactName, description, createDate, status, priority, dueDateTime.'),
+      maxRecords: z.number().max(500).optional().describe('Number of tickets to return (default: 100, max: 500).'),
+    },
+    async (input, extra) => {
+      try {
+        // Get today's date range (start and end of today in UTC)
+        const today = new Date()
+        today.setHours(0, 0, 0, 0)
+        const todayStart = today.toISOString()
+        
+        const tomorrow = new Date(today)
+        tomorrow.setDate(tomorrow.getDate() + 1)
+        const tomorrowStart = tomorrow.toISOString()
+        
+        console.log(`[getTicketsCreatedToday] Filtering tickets created between ${todayStart} and ${tomorrowStart}`)
+        
+        // Query tickets created today
+        const ticketsUrl = `https://webservices15.autotask.net/ATServicesRest/V1.0/Tickets/query`
+        const ticketBody: any = {
+          filter: [
+            { field: 'createDate', op: 'gte', value: todayStart },
+            { field: 'createDate', op: 'lt', value: tomorrowStart },
+          ],
+          maxRecords: input.maxRecords || 100,
+          sort: [{ field: 'createDate', direction: 'DESC' }],
+        }
+        
+        const ticketData = await callApi(ticketsUrl, {
+          method: 'POST',
+          headers: getAutotaskHeaders({ 'Content-Type': 'application/json' }),
+          body: JSON.stringify(ticketBody),
+        })
+        
+        console.log(`[getTicketsCreatedToday] API returned ${Array.isArray(ticketData) ? ticketData.length : 'non-array'} tickets`)
+        
+        // Handle API response
+        let tickets: any[] = []
+        if (Array.isArray(ticketData)) {
+          tickets = ticketData
+        } else if (ticketData && typeof ticketData === 'object') {
+          if (Array.isArray(ticketData.items)) {
+            tickets = ticketData.items
+          } else if (Array.isArray(ticketData.data)) {
+            tickets = ticketData.data
+          } else if (Array.isArray(ticketData.records)) {
+            tickets = ticketData.records
+          } else if (ticketData.id || ticketData.ticketNumber) {
+            tickets = [ticketData]
+          }
+        }
+        
+        console.log(`[getTicketsCreatedToday] Parsed ${tickets.length} tickets from API response`)
+        
+        // Get unique company IDs and contact IDs for lookup
+        const companyIds = [...new Set(tickets.map((t: any) => t.companyID).filter(Boolean))]
+        const contactIds = [...new Set(tickets.map((t: any) => t.contactID || t.createdByContactID).filter(Boolean))]
+        
+        // Lookup company names
+        const companyMap = new Map<number, string>()
+        if (companyIds.length > 0) {
+          try {
+            const companiesUrl = `https://webservices15.autotask.net/ATServicesRest/V1.0/Companies/query`
+            // Query companies in batches if needed (Autotask API limit is 500)
+            for (let i = 0; i < companyIds.length; i += 100) {
+              const batch = companyIds.slice(i, i + 100)
+              const companyBody = {
+                filter: batch.map((id: number) => ({ field: 'id', op: 'eq', value: id })),
+                maxRecords: 100,
+              }
+              
+              // Use OR logic - Autotask might not support multiple OR filters easily, so query individually
+              // Actually, let's query each company individually to be safe
+              for (const companyId of batch) {
+                try {
+                  const companyQuery = {
+                    filter: [{ field: 'id', op: 'eq', value: companyId }],
+                    maxRecords: 1,
+                  }
+                  const companyData = await callApi(companiesUrl, {
+                    method: 'POST',
+                    headers: getAutotaskHeaders({ 'Content-Type': 'application/json' }),
+                    body: JSON.stringify(companyQuery),
+                  })
+                  
+                  let companies: any[] = []
+                  if (Array.isArray(companyData)) {
+                    companies = companyData
+                  } else if (companyData && typeof companyData === 'object') {
+                    companies = companyData.items || companyData.data || companyData.records || []
+                  }
+                  
+                  if (companies.length > 0) {
+                    const company = companies[0]
+                    companyMap.set(companyId, company.companyName || company.name || `Company ${companyId}`)
+                  }
+                } catch (error) {
+                  console.log(`[getTicketsCreatedToday] Failed to lookup company ${companyId}:`, error)
+                }
+              }
+            }
+          } catch (error) {
+            console.log(`[getTicketsCreatedToday] Failed to lookup companies:`, error)
+          }
+        }
+        
+        // Lookup contact names (sender)
+        const contactMap = new Map<number, string>()
+        if (contactIds.length > 0) {
+          try {
+            const contactsUrl = `https://webservices15.autotask.net/ATServicesRest/V1.0/Contacts/query`
+            for (const contactId of contactIds.slice(0, 100)) { // Limit to 100 to avoid too many API calls
+              try {
+                const contactQuery = {
+                  filter: [{ field: 'id', op: 'eq', value: contactId }],
+                  maxRecords: 1,
+                }
+                const contactData = await callApi(contactsUrl, {
+                  method: 'POST',
+                  headers: getAutotaskHeaders({ 'Content-Type': 'application/json' }),
+                  body: JSON.stringify(contactQuery),
+                })
+                
+                let contacts: any[] = []
+                if (Array.isArray(contactData)) {
+                  contacts = contactData
+                } else if (contactData && typeof contactData === 'object') {
+                  contacts = contactData.items || contactData.data || contactData.records || []
+                }
+                
+                if (contacts.length > 0) {
+                  const contact = contacts[0]
+                  const contactName = contact.firstName && contact.lastName
+                    ? `${contact.firstName} ${contact.lastName}`.trim()
+                    : contact.firstName || contact.lastName || contact.emailAddress || `Contact ${contactId}`
+                  contactMap.set(contactId, contactName)
+                }
+              } catch (error) {
+                console.log(`[getTicketsCreatedToday] Failed to lookup contact ${contactId}:`, error)
+              }
+            }
+          } catch (error) {
+            console.log(`[getTicketsCreatedToday] Failed to lookup contacts:`, error)
+          }
+        }
+        
+        // Extract only requested fields (or default fields)
+        const requestedFields = input.fields || ['ticketNumber', 'title', 'companyName', 'contactName', 'description', 'createDate', 'status', 'priority']
+        const simplifiedTickets = tickets.map((ticket: any) => {
+          const simplified: any = {}
+          
+          requestedFields.forEach((field) => {
+            if (field === 'companyName') {
+              // Lookup company name
+              const companyId = ticket.companyID
+              simplified.companyName = companyId ? (companyMap.get(companyId) || `Company ${companyId}`) : null
+            } else if (field === 'contactName' || field === 'sender') {
+              // Lookup contact name (sender)
+              const contactId = ticket.contactID || ticket.createdByContactID
+              simplified.contactName = contactId ? (contactMap.get(contactId) || `Contact ${contactId}`) : null
+              if (field === 'sender') {
+                simplified.sender = simplified.contactName
+              }
+            } else if (field === 'description') {
+              // Truncate description to 200 chars
+              if (ticket.description && typeof ticket.description === 'string') {
+                simplified.description = ticket.description.length > 200 
+                  ? ticket.description.substring(0, 200) + '... [truncated]'
+                  : ticket.description
+              } else {
+                simplified.description = ticket.description || null
+              }
+            } else if (ticket[field] !== undefined) {
+              simplified[field] = ticket[field]
+            }
+          })
+          
+          return simplified
+        })
+        
+        const responseData = {
+          dateFilter: `Tickets created today (${today.toISOString().split('T')[0]})`,
+          totalTicketsReturned: simplifiedTickets.length,
+          maxRecordsRequested: input.maxRecords || 100,
+          fields: requestedFields,
+          tickets: simplifiedTickets,
+        }
+        
+        // Apply truncateResponse to ensure we don't exceed size limits
+        const responseText = truncateResponse(responseData, 35000)
+        
+        return {
+          content: [
+            {
+              type: 'text',
+              text: responseText,
+            },
+          ],
+        }
+      } catch (error) {
+        const msg = error instanceof Error ? error.message : String(error)
+        console.error('getTicketsCreatedToday error:', {
+          error: msg,
+        })
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify(
+                {
+                  error: 'Failed to get tickets created today',
+                  message: msg,
+                  suggestion: 'Verify the date filter is correct. Today\'s date is used automatically.',
+                  toolUsed: 'getTicketsCreatedToday',
+                },
+                null,
+                2,
+              ),
+            },
+          ],
+          isError: true,
+        }
+      }
+    },
+  )
   
   server.tool(
     'ticketCategoriesUrlParameterQueryCount',
