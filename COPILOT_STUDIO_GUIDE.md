@@ -71,31 +71,46 @@ Store commonly used values:
 
 ### 5. Response Formatting
 
-In your Power Automate flows or node actions, format responses:
+**For the Agent (Add to System Message):**
+```
+When presenting ticket information to users:
+- Extract and display key fields: ticket number, title, status, priority, company name, create date
+- Format multiple tickets as a numbered list or table
+- For single tickets, present in a clear, readable format
+- Always include the ticket number for reference
+- If response was truncated, inform the user and suggest more specific filters
+```
+
+**Optional: Power Automate Flows (Advanced)**
+If you want custom formatting beyond what the agent provides, you can create Power Automate flows to:
 - Extract key fields (ticket number, title, status, priority)
-- Present in tables or lists
+- Present in formatted tables or cards
 - Include links to full ticket details if needed
+
+*Note: This is optional. The agent can handle formatting automatically with good instructions.*
 
 ## Best Practices
 
 ### Query Construction
 
-**Good Query Examples:**
-```json
-// Get recent tickets for a company
+**These are examples for the agent to understand - add to System Message:**
+
+```
+When constructing queries:
+- Always include maxRecords (20-50 recommended) to prevent large responses
+- Use specific filters to narrow results (companyID, status, priority, categoryID, dates)
+- For date ranges, use createDate with "gte" (greater than or equal) and "lte" (less than or equal)
+- Sort results by createDate DESC for most recent first
+- Use ticketsQueryCount when only a count is needed
+
+Example query structure:
 {
   "filter": [
-    { "field": "companyID", "op": "eq", "value": "123" }
+    { "field": "companyID", "op": "eq", "value": "123" },
+    { "field": "status", "op": "eq", "value": "5" }
   ],
   "maxRecords": 20,
   "sort": [{ "field": "createDate", "direction": "DESC" }]
-}
-
-// Count tickets by status
-{
-  "filter": [
-    { "field": "status", "op": "eq", "value": "5" }
-  ]
 }
 ```
 
@@ -114,16 +129,22 @@ When you encounter errors:
 
 ### Natural Language Translation
 
-Help the agent translate common phrases:
+**Add this table to System Message to help the agent translate user questions:**
 
-| User Question | Tool | Query Pattern |
-|--------------|------|---------------|
-| "How many tickets..." | ticketsQueryCount | Filter by criteria |
-| "Show me tickets for..." | ticketsQuery | Filter by companyID/contactID |
-| "What's the status of ticket X" | ticketsQueryItem | Use ticket ID |
-| "Recent tickets" | ticketsQuery | Filter by createDate, sort DESC |
-| "Tickets by priority" | ticketsQuery | Filter by priority field |
-| "Tickets in category X" | ticketsQuery | Filter by categoryID |
+```
+When users ask questions, translate them to tools and queries:
+
+| User Question Pattern | Use Tool | Query Approach |
+|----------------------|----------|---------------|
+| "How many tickets..." | ticketsQueryCount | Filter by criteria, no maxRecords needed |
+| "Show me tickets for [Company]" | ticketsQuery | Filter by companyID, maxRecords: 20-50 |
+| "What's the status of ticket [X]" | ticketsQueryItem | Use ticket ID or number |
+| "Recent tickets" or "Latest tickets" | ticketsQuery | Filter by createDate (last 7-30 days), sort DESC, maxRecords: 10-20 |
+| "Tickets by priority [X]" | ticketsQuery | Filter by priority field, maxRecords: 20 |
+| "Tickets in category [X]" | ticketsQuery | Filter by categoryID, maxRecords: 20 |
+| "Tickets for contact [X]" | ticketsQuery | Filter by contactID, maxRecords: 20 |
+| "Open tickets" or "Closed tickets" | ticketsQuery | Filter by status field, maxRecords: 20 |
+```
 
 ## Monitoring and Troubleshooting
 
@@ -152,21 +173,25 @@ Help the agent translate common phrases:
 
 ## Advanced Configuration
 
-### Custom Power Automate Flows
+### Custom Power Automate Flows (Optional)
 
-Create flows to:
-- Format ticket responses into cards
-- Extract and summarize key information
-- Handle pagination for large result sets
+**Only create these if you need custom formatting that the agent can't handle:**
+- Format ticket responses into cards with specific styling
+- Extract and summarize key information in a specific format
+- Handle pagination for large result sets automatically
 - Cache frequently accessed data
 
-### Response Post-Processing
+**Note:** The agent can handle most formatting automatically with good instructions. Only use Power Automate if you need very specific formatting requirements.
 
-After receiving MCP responses:
+### Response Post-Processing (Optional)
+
+**If using Power Automate flows**, after receiving MCP responses:
 1. Parse JSON response
 2. Extract essential fields
 3. Format for user-friendly display
 4. Add navigation/action buttons if needed
+
+**For most use cases, the agent instructions above are sufficient.**
 
 ## Testing
 
