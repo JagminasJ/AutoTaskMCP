@@ -4,6 +4,12 @@ FROM node:20-slim AS builder
 
 WORKDIR /app
 
+# Accept build arguments for Autotask credentials (optional - can also be set at runtime)
+ARG AUTOTASK_API_INTEGRATION_CODE
+ARG AUTOTASK_USER_NAME
+ARG AUTOTASK_SECRET
+ARG AUTOTASK_IMPERSONATION_RESOURCE_ID
+
 # Copy package files
 COPY package.json package-lock.json* ./
 
@@ -21,6 +27,12 @@ FROM node:20-slim
 
 WORKDIR /app
 
+# Accept build arguments (passed from builder stage or set at runtime)
+ARG AUTOTASK_API_INTEGRATION_CODE
+ARG AUTOTASK_USER_NAME
+ARG AUTOTASK_SECRET
+ARG AUTOTASK_IMPERSONATION_RESOURCE_ID
+
 # Copy package files
 COPY package.json package-lock.json* ./
 
@@ -37,8 +49,13 @@ USER appuser
 # Expose the port the app runs on
 EXPOSE 3000
 
-# Set environment variable for production
+# Set environment variables
 ENV NODE_ENV=production
+# Set Autotask credentials from build args (can be overridden at runtime)
+ENV AUTOTASK_API_INTEGRATION_CODE=${AUTOTASK_API_INTEGRATION_CODE}
+ENV AUTOTASK_USER_NAME=${AUTOTASK_USER_NAME}
+ENV AUTOTASK_SECRET=${AUTOTASK_SECRET}
+ENV AUTOTASK_IMPERSONATION_RESOURCE_ID=${AUTOTASK_IMPERSONATION_RESOURCE_ID}
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \

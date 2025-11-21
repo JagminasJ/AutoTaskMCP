@@ -79,6 +79,45 @@ docker-compose up -d
 - `GET /mcp` - SSE stream for MCP responses
 - `DELETE /mcp` - Terminate MCP session
 
+## Configuration
+
+### Autotask API Credentials
+
+The server requires Autotask API credentials to be configured. These can be set via environment variables:
+
+- `AUTOTASK_API_INTEGRATION_CODE` - Your Autotask API Integration Code
+- `AUTOTASK_USER_NAME` - Your Autotask API Username
+- `AUTOTASK_SECRET` - Your Autotask API Secret
+- `AUTOTASK_IMPERSONATION_RESOURCE_ID` - Your Autotask Impersonation Resource ID
+
+These can be set:
+- As environment variables at runtime (recommended)
+- As build arguments during Docker build (baked into image)
+
+## Deployment
+
+### Deploying to Northflank
+
+1. **Build Context**: Set to `.` (the root directory where the Dockerfile is located)
+
+2. **Port**: Expose port `3000` to the internet
+
+3. **Environment Variables**: Set the following environment variables in Northflank:
+   - `AUTOTASK_API_INTEGRATION_CODE` - Your Autotask API Integration Code
+   - `AUTOTASK_USER_NAME` - Your Autotask API Username
+   - `AUTOTASK_SECRET` - Your Autotask API Secret
+   - `AUTOTASK_IMPERSONATION_RESOURCE_ID` - Your Autotask Impersonation Resource ID
+   - `PORT` (optional) - Server port, defaults to 3000
+   - `NODE_ENV` (optional) - Set to `production`
+
+4. **Build Arguments** (Optional - if you want to hardcode credentials into the image):
+   - `AUTOTASK_API_INTEGRATION_CODE`
+   - `AUTOTASK_USER_NAME`
+   - `AUTOTASK_SECRET`
+   - `AUTOTASK_IMPERSONATION_RESOURCE_ID`
+
+   Note: If using build arguments, the credentials will be baked into the Docker image. If using environment variables, they can be changed without rebuilding.
+
 ## Publishing
 
 ### Publishing to GitHub

@@ -1,6 +1,7 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
 import { callApi } from './postman'
+import { getAutotaskHeaders } from './config'
 
 export function registerTools(server: McpServer) {
   server.tool(
@@ -12,13 +13,7 @@ export function registerTools(server: McpServer) {
         const baseUrl = `https://webservices15.autotask.net/ATServicesRest/V1.0/TicketCategories/query/count`
         const data = await callApi(baseUrl, {
           method: 'GET',
-          headers: {
-            ApiIntegrationCode: 'string',
-            UserName: 'string',
-            Secret: 'string',
-            ImpersonationResourceId: 'string',
-            Accept: 'application/json',
-          },
+          headers: getAutotaskHeaders(),
           params: { search: input.search },
         })
         return {
@@ -42,14 +37,7 @@ export function registerTools(server: McpServer) {
         const baseUrl = `https://webservices15.autotask.net/ATServicesRest/V1.0/TicketCategories/query/count`
         const data = await callApi(baseUrl, {
           method: 'POST',
-          headers: {
-            ApiIntegrationCode: 'string',
-            UserName: 'string',
-            Secret: 'string',
-            ImpersonationResourceId: 'string',
-            'Content-Type': 'application/json',
-            Accept: 'application/json',
-          },
+          headers: getAutotaskHeaders({ 'Content-Type': 'application/json' }),
           body: JSON.stringify(input.body),
         })
         return {
@@ -73,13 +61,7 @@ export function registerTools(server: McpServer) {
         const baseUrl = `https://webservices15.autotask.net/ATServicesRest/V1.0/TicketCategories/query`
         const data = await callApi(baseUrl, {
           method: 'GET',
-          headers: {
-            ApiIntegrationCode: 'string',
-            UserName: 'string',
-            Secret: 'string',
-            ImpersonationResourceId: 'string',
-            Accept: 'application/json',
-          },
+          headers: getAutotaskHeaders(),
           params: { search: input.search },
         })
         return {
@@ -103,14 +85,7 @@ export function registerTools(server: McpServer) {
         const baseUrl = `https://webservices15.autotask.net/ATServicesRest/V1.0/TicketCategories/query`
         const data = await callApi(baseUrl, {
           method: 'POST',
-          headers: {
-            ApiIntegrationCode: 'string',
-            UserName: 'string',
-            Secret: 'string',
-            ImpersonationResourceId: 'string',
-            'Content-Type': 'application/json',
-            Accept: 'application/json',
-          },
+          headers: getAutotaskHeaders({ 'Content-Type': 'application/json' }),
           body: JSON.stringify(input.body),
         })
         return {
@@ -134,13 +109,7 @@ export function registerTools(server: McpServer) {
         const baseUrl = `https://webservices15.autotask.net/ATServicesRest/V1.0/TicketCategories/${input.id}`
         const data = await callApi(baseUrl, {
           method: 'GET',
-          headers: {
-            ApiIntegrationCode: 'string',
-            UserName: 'string',
-            Secret: 'string',
-            ImpersonationResourceId: 'string',
-            Accept: 'application/json',
-          },
+          headers: getAutotaskHeaders(),
         })
         return {
           content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
@@ -163,13 +132,7 @@ export function registerTools(server: McpServer) {
         const baseUrl = `https://webservices15.autotask.net/ATServicesRest/V1.0/TicketCategories/entityInformation/fields`
         const data = await callApi(baseUrl, {
           method: 'GET',
-          headers: {
-            ApiIntegrationCode: 'string',
-            UserName: 'string',
-            Secret: 'string',
-            ImpersonationResourceId: 'string',
-            Accept: 'application/json',
-          },
+          headers: getAutotaskHeaders(),
         })
         return {
           content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
@@ -192,13 +155,7 @@ export function registerTools(server: McpServer) {
         const baseUrl = `https://webservices15.autotask.net/ATServicesRest/V1.0/TicketCategories/entityInformation/userDefinedFields`
         const data = await callApi(baseUrl, {
           method: 'GET',
-          headers: {
-            ApiIntegrationCode: 'string',
-            UserName: 'string',
-            Secret: 'string',
-            ImpersonationResourceId: 'string',
-            Accept: 'application/json',
-          },
+          headers: getAutotaskHeaders(),
         })
         return {
           content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
@@ -221,13 +178,7 @@ export function registerTools(server: McpServer) {
         const baseUrl = `https://webservices15.autotask.net/ATServicesRest/V1.0/TicketCategories/entityInformation`
         const data = await callApi(baseUrl, {
           method: 'GET',
-          headers: {
-            ApiIntegrationCode: 'string',
-            UserName: 'string',
-            Secret: 'string',
-            ImpersonationResourceId: 'string',
-            Accept: 'application/json',
-          },
+          headers: getAutotaskHeaders(),
         })
         return {
           content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
@@ -250,13 +201,7 @@ export function registerTools(server: McpServer) {
         const baseUrl = `https://webservices15.autotask.net/ATServicesRest/V1.0/TicketCategories/${input.parentId}/FieldDefaults/${input.id}`
         const data = await callApi(baseUrl, {
           method: 'GET',
-          headers: {
-            ApiIntegrationCode: 'string',
-            UserName: 'string',
-            Secret: 'string',
-            ImpersonationResourceId: 'string',
-            Accept: 'application/json',
-          },
+          headers: getAutotaskHeaders(),
         })
         return {
           content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
@@ -279,13 +224,7 @@ export function registerTools(server: McpServer) {
         const baseUrl = `https://webservices15.autotask.net/ATServicesRest/V1.0/TicketCategories/${input.parentId}/FieldDefaults/entityInformation/fields`
         const data = await callApi(baseUrl, {
           method: 'GET',
-          headers: {
-            ApiIntegrationCode: 'string',
-            UserName: 'string',
-            Secret: 'string',
-            ImpersonationResourceId: 'string',
-            Accept: 'application/json',
-          },
+          headers: getAutotaskHeaders(),
         })
         return {
           content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
@@ -308,13 +247,7 @@ export function registerTools(server: McpServer) {
         const baseUrl = `https://webservices15.autotask.net/ATServicesRest/V1.0/TicketCategories/${input.parentId}/FieldDefaults/entityInformation/userDefinedFields`
         const data = await callApi(baseUrl, {
           method: 'GET',
-          headers: {
-            ApiIntegrationCode: 'string',
-            UserName: 'string',
-            Secret: 'string',
-            ImpersonationResourceId: 'string',
-            Accept: 'application/json',
-          },
+          headers: getAutotaskHeaders(),
         })
         return {
           content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
@@ -337,13 +270,7 @@ export function registerTools(server: McpServer) {
         const baseUrl = `https://webservices15.autotask.net/ATServicesRest/V1.0/TicketCategories/${input.parentId}/FieldDefaults/entityInformation`
         const data = await callApi(baseUrl, {
           method: 'GET',
-          headers: {
-            ApiIntegrationCode: 'string',
-            UserName: 'string',
-            Secret: 'string',
-            ImpersonationResourceId: 'string',
-            Accept: 'application/json',
-          },
+          headers: getAutotaskHeaders(),
         })
         return {
           content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
@@ -366,13 +293,7 @@ export function registerTools(server: McpServer) {
         const baseUrl = `https://webservices15.autotask.net/ATServicesRest/V1.0/TicketCategories/${input.parentId}/FieldDefaults`
         const data = await callApi(baseUrl, {
           method: 'GET',
-          headers: {
-            ApiIntegrationCode: 'string',
-            UserName: 'string',
-            Secret: 'string',
-            ImpersonationResourceId: 'string',
-            Accept: 'application/json',
-          },
+          headers: getAutotaskHeaders(),
         })
         return {
           content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
@@ -395,14 +316,7 @@ export function registerTools(server: McpServer) {
         const baseUrl = `https://webservices15.autotask.net/ATServicesRest/V1.0/TicketCategories`
         const data = await callApi(baseUrl, {
           method: 'PUT',
-          headers: {
-            ApiIntegrationCode: 'string',
-            UserName: 'string',
-            Secret: 'string',
-            ImpersonationResourceId: 'string',
-            'Content-Type': 'application/json',
-            Accept: 'application/json',
-          },
+          headers: getAutotaskHeaders({ 'Content-Type': 'application/json' }),
           body: JSON.stringify(input.body),
         })
         return {
@@ -426,14 +340,7 @@ export function registerTools(server: McpServer) {
         const baseUrl = `https://webservices15.autotask.net/ATServicesRest/V1.0/TicketCategories`
         const data = await callApi(baseUrl, {
           method: 'PATCH',
-          headers: {
-            ApiIntegrationCode: 'string',
-            UserName: 'string',
-            Secret: 'string',
-            ImpersonationResourceId: 'string',
-            'Content-Type': 'application/json',
-            Accept: 'application/json',
-          },
+          headers: getAutotaskHeaders({ 'Content-Type': 'application/json' }),
           body: JSON.stringify(input.body),
         })
         return {
@@ -457,13 +364,7 @@ export function registerTools(server: McpServer) {
         const baseUrl = `https://webservices15.autotask.net/ATServicesRest/V1.0/TicketCategoryFieldDefaults/query/count`
         const data = await callApi(baseUrl, {
           method: 'GET',
-          headers: {
-            ApiIntegrationCode: 'string',
-            UserName: 'string',
-            Secret: 'string',
-            ImpersonationResourceId: 'string',
-            Accept: 'application/json',
-          },
+          headers: getAutotaskHeaders(),
           params: { search: input.search },
         })
         return {
@@ -487,14 +388,7 @@ export function registerTools(server: McpServer) {
         const baseUrl = `https://webservices15.autotask.net/ATServicesRest/V1.0/TicketCategoryFieldDefaults/query/count`
         const data = await callApi(baseUrl, {
           method: 'POST',
-          headers: {
-            ApiIntegrationCode: 'string',
-            UserName: 'string',
-            Secret: 'string',
-            ImpersonationResourceId: 'string',
-            'Content-Type': 'application/json',
-            Accept: 'application/json',
-          },
+          headers: getAutotaskHeaders({ 'Content-Type': 'application/json' }),
           body: JSON.stringify(input.body),
         })
         return {
@@ -518,13 +412,7 @@ export function registerTools(server: McpServer) {
         const baseUrl = `https://webservices15.autotask.net/ATServicesRest/V1.0/TicketCategoryFieldDefaults/query`
         const data = await callApi(baseUrl, {
           method: 'GET',
-          headers: {
-            ApiIntegrationCode: 'string',
-            UserName: 'string',
-            Secret: 'string',
-            ImpersonationResourceId: 'string',
-            Accept: 'application/json',
-          },
+          headers: getAutotaskHeaders(),
           params: { search: input.search },
         })
         return {
@@ -548,14 +436,7 @@ export function registerTools(server: McpServer) {
         const baseUrl = `https://webservices15.autotask.net/ATServicesRest/V1.0/TicketCategoryFieldDefaults/query`
         const data = await callApi(baseUrl, {
           method: 'POST',
-          headers: {
-            ApiIntegrationCode: 'string',
-            UserName: 'string',
-            Secret: 'string',
-            ImpersonationResourceId: 'string',
-            'Content-Type': 'application/json',
-            Accept: 'application/json',
-          },
+          headers: getAutotaskHeaders({ 'Content-Type': 'application/json' }),
           body: JSON.stringify(input.body),
         })
         return {
@@ -579,13 +460,7 @@ export function registerTools(server: McpServer) {
         const baseUrl = `https://webservices15.autotask.net/ATServicesRest/V1.0/TicketCategoryFieldDefaults/${input.id}`
         const data = await callApi(baseUrl, {
           method: 'GET',
-          headers: {
-            ApiIntegrationCode: 'string',
-            UserName: 'string',
-            Secret: 'string',
-            ImpersonationResourceId: 'string',
-            Accept: 'application/json',
-          },
+          headers: getAutotaskHeaders(),
         })
         return {
           content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
@@ -608,13 +483,7 @@ export function registerTools(server: McpServer) {
         const baseUrl = `https://webservices15.autotask.net/ATServicesRest/V1.0/TicketCategoryFieldDefaults/entityInformation/fields`
         const data = await callApi(baseUrl, {
           method: 'GET',
-          headers: {
-            ApiIntegrationCode: 'string',
-            UserName: 'string',
-            Secret: 'string',
-            ImpersonationResourceId: 'string',
-            Accept: 'application/json',
-          },
+          headers: getAutotaskHeaders(),
         })
         return {
           content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
@@ -637,13 +506,7 @@ export function registerTools(server: McpServer) {
         const baseUrl = `https://webservices15.autotask.net/ATServicesRest/V1.0/TicketCategoryFieldDefaults/entityInformation/userDefinedFields`
         const data = await callApi(baseUrl, {
           method: 'GET',
-          headers: {
-            ApiIntegrationCode: 'string',
-            UserName: 'string',
-            Secret: 'string',
-            ImpersonationResourceId: 'string',
-            Accept: 'application/json',
-          },
+          headers: getAutotaskHeaders(),
         })
         return {
           content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
@@ -666,13 +529,7 @@ export function registerTools(server: McpServer) {
         const baseUrl = `https://webservices15.autotask.net/ATServicesRest/V1.0/TicketCategoryFieldDefaults/entityInformation`
         const data = await callApi(baseUrl, {
           method: 'GET',
-          headers: {
-            ApiIntegrationCode: 'string',
-            UserName: 'string',
-            Secret: 'string',
-            ImpersonationResourceId: 'string',
-            Accept: 'application/json',
-          },
+          headers: getAutotaskHeaders(),
         })
         return {
           content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
@@ -695,13 +552,7 @@ export function registerTools(server: McpServer) {
         const baseUrl = `https://webservices15.autotask.net/ATServicesRest/V1.0/TicketHistory/query/count`
         const data = await callApi(baseUrl, {
           method: 'GET',
-          headers: {
-            ApiIntegrationCode: 'string',
-            UserName: 'string',
-            Secret: 'string',
-            ImpersonationResourceId: 'string',
-            Accept: 'application/json',
-          },
+          headers: getAutotaskHeaders(),
           params: { search: input.search },
         })
         return {
@@ -725,14 +576,7 @@ export function registerTools(server: McpServer) {
         const baseUrl = `https://webservices15.autotask.net/ATServicesRest/V1.0/TicketHistory/query/count`
         const data = await callApi(baseUrl, {
           method: 'POST',
-          headers: {
-            ApiIntegrationCode: 'string',
-            UserName: 'string',
-            Secret: 'string',
-            ImpersonationResourceId: 'string',
-            'Content-Type': 'application/json',
-            Accept: 'application/json',
-          },
+          headers: getAutotaskHeaders({ 'Content-Type': 'application/json' }),
           body: JSON.stringify(input.body),
         })
         return {
@@ -756,13 +600,7 @@ export function registerTools(server: McpServer) {
         const baseUrl = `https://webservices15.autotask.net/ATServicesRest/V1.0/TicketHistory/query`
         const data = await callApi(baseUrl, {
           method: 'GET',
-          headers: {
-            ApiIntegrationCode: 'string',
-            UserName: 'string',
-            Secret: 'string',
-            ImpersonationResourceId: 'string',
-            Accept: 'application/json',
-          },
+          headers: getAutotaskHeaders(),
           params: { search: input.search },
         })
         return {
@@ -786,14 +624,7 @@ export function registerTools(server: McpServer) {
         const baseUrl = `https://webservices15.autotask.net/ATServicesRest/V1.0/TicketHistory/query`
         const data = await callApi(baseUrl, {
           method: 'POST',
-          headers: {
-            ApiIntegrationCode: 'string',
-            UserName: 'string',
-            Secret: 'string',
-            ImpersonationResourceId: 'string',
-            'Content-Type': 'application/json',
-            Accept: 'application/json',
-          },
+          headers: getAutotaskHeaders({ 'Content-Type': 'application/json' }),
           body: JSON.stringify(input.body),
         })
         return {
@@ -817,13 +648,7 @@ export function registerTools(server: McpServer) {
         const baseUrl = `https://webservices15.autotask.net/ATServicesRest/V1.0/TicketHistory/${input.id}`
         const data = await callApi(baseUrl, {
           method: 'GET',
-          headers: {
-            ApiIntegrationCode: 'string',
-            UserName: 'string',
-            Secret: 'string',
-            ImpersonationResourceId: 'string',
-            Accept: 'application/json',
-          },
+          headers: getAutotaskHeaders(),
         })
         return {
           content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
@@ -846,13 +671,7 @@ export function registerTools(server: McpServer) {
         const baseUrl = `https://webservices15.autotask.net/ATServicesRest/V1.0/TicketHistory/entityInformation/fields`
         const data = await callApi(baseUrl, {
           method: 'GET',
-          headers: {
-            ApiIntegrationCode: 'string',
-            UserName: 'string',
-            Secret: 'string',
-            ImpersonationResourceId: 'string',
-            Accept: 'application/json',
-          },
+          headers: getAutotaskHeaders(),
         })
         return {
           content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
@@ -875,13 +694,7 @@ export function registerTools(server: McpServer) {
         const baseUrl = `https://webservices15.autotask.net/ATServicesRest/V1.0/TicketHistory/entityInformation/userDefinedFields`
         const data = await callApi(baseUrl, {
           method: 'GET',
-          headers: {
-            ApiIntegrationCode: 'string',
-            UserName: 'string',
-            Secret: 'string',
-            ImpersonationResourceId: 'string',
-            Accept: 'application/json',
-          },
+          headers: getAutotaskHeaders(),
         })
         return {
           content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
@@ -904,13 +717,7 @@ export function registerTools(server: McpServer) {
         const baseUrl = `https://webservices15.autotask.net/ATServicesRest/V1.0/TicketHistory/entityInformation`
         const data = await callApi(baseUrl, {
           method: 'GET',
-          headers: {
-            ApiIntegrationCode: 'string',
-            UserName: 'string',
-            Secret: 'string',
-            ImpersonationResourceId: 'string',
-            Accept: 'application/json',
-          },
+          headers: getAutotaskHeaders(),
         })
         return {
           content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
@@ -933,13 +740,7 @@ export function registerTools(server: McpServer) {
         const baseUrl = `https://webservices15.autotask.net/ATServicesRest/V1.0/TicketNoteAttachments/entityInformation/fields`
         const data = await callApi(baseUrl, {
           method: 'GET',
-          headers: {
-            ApiIntegrationCode: 'string',
-            UserName: 'string',
-            Secret: 'string',
-            ImpersonationResourceId: 'string',
-            Accept: 'application/json',
-          },
+          headers: getAutotaskHeaders(),
         })
         return {
           content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
@@ -962,13 +763,7 @@ export function registerTools(server: McpServer) {
         const baseUrl = `https://webservices15.autotask.net/ATServicesRest/V1.0/TicketNoteAttachments/entityInformation`
         const data = await callApi(baseUrl, {
           method: 'GET',
-          headers: {
-            ApiIntegrationCode: 'string',
-            UserName: 'string',
-            Secret: 'string',
-            ImpersonationResourceId: 'string',
-            Accept: 'application/json',
-          },
+          headers: getAutotaskHeaders(),
         })
         return {
           content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
@@ -991,13 +786,7 @@ export function registerTools(server: McpServer) {
         const baseUrl = `https://webservices15.autotask.net/ATServicesRest/V1.0/TicketNoteAttachments/query/count`
         const data = await callApi(baseUrl, {
           method: 'GET',
-          headers: {
-            ApiIntegrationCode: 'string',
-            UserName: 'string',
-            Secret: 'string',
-            ImpersonationResourceId: 'string',
-            Accept: 'application/json',
-          },
+          headers: getAutotaskHeaders(),
           params: { search: input.search },
         })
         return {
@@ -1021,14 +810,7 @@ export function registerTools(server: McpServer) {
         const baseUrl = `https://webservices15.autotask.net/ATServicesRest/V1.0/TicketNoteAttachments/query/count`
         const data = await callApi(baseUrl, {
           method: 'POST',
-          headers: {
-            ApiIntegrationCode: 'string',
-            UserName: 'string',
-            Secret: 'string',
-            ImpersonationResourceId: 'string',
-            'Content-Type': 'application/json',
-            Accept: 'application/json',
-          },
+          headers: getAutotaskHeaders({ 'Content-Type': 'application/json' }),
           body: JSON.stringify(input.body),
         })
         return {
@@ -1052,13 +834,7 @@ export function registerTools(server: McpServer) {
         const baseUrl = `https://webservices15.autotask.net/ATServicesRest/V1.0/TicketNoteAttachments/query`
         const data = await callApi(baseUrl, {
           method: 'GET',
-          headers: {
-            ApiIntegrationCode: 'string',
-            UserName: 'string',
-            Secret: 'string',
-            ImpersonationResourceId: 'string',
-            Accept: 'application/json',
-          },
+          headers: getAutotaskHeaders(),
           params: { search: input.search },
         })
         return {
@@ -1082,14 +858,7 @@ export function registerTools(server: McpServer) {
         const baseUrl = `https://webservices15.autotask.net/ATServicesRest/V1.0/TicketNoteAttachments/query`
         const data = await callApi(baseUrl, {
           method: 'POST',
-          headers: {
-            ApiIntegrationCode: 'string',
-            UserName: 'string',
-            Secret: 'string',
-            ImpersonationResourceId: 'string',
-            'Content-Type': 'application/json',
-            Accept: 'application/json',
-          },
+          headers: getAutotaskHeaders({ 'Content-Type': 'application/json' }),
           body: JSON.stringify(input.body),
         })
         return {
@@ -1113,13 +882,7 @@ export function registerTools(server: McpServer) {
         const baseUrl = `https://webservices15.autotask.net/ATServicesRest/V1.0/TicketNoteAttachments/${input.id}`
         const data = await callApi(baseUrl, {
           method: 'GET',
-          headers: {
-            ApiIntegrationCode: 'string',
-            UserName: 'string',
-            Secret: 'string',
-            ImpersonationResourceId: 'string',
-            Accept: 'application/json',
-          },
+          headers: getAutotaskHeaders(),
         })
         return {
           content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
@@ -1142,13 +905,7 @@ export function registerTools(server: McpServer) {
         const baseUrl = `https://webservices15.autotask.net/ATServicesRest/V1.0/TicketNotes/${input.parentId}/Attachments/${input.id}`
         const data = await callApi(baseUrl, {
           method: 'GET',
-          headers: {
-            ApiIntegrationCode: 'string',
-            UserName: 'string',
-            Secret: 'string',
-            ImpersonationResourceId: 'string',
-            Accept: 'application/json',
-          },
+          headers: getAutotaskHeaders(),
         })
         return {
           content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
@@ -1171,13 +928,7 @@ export function registerTools(server: McpServer) {
         const baseUrl = `https://webservices15.autotask.net/ATServicesRest/V1.0/TicketNotes/${input.parentId}/Attachments/${input.id}`
         const data = await callApi(baseUrl, {
           method: 'DELETE',
-          headers: {
-            ApiIntegrationCode: 'string',
-            UserName: 'string',
-            Secret: 'string',
-            ImpersonationResourceId: 'string',
-            Accept: 'application/json',
-          },
+          headers: getAutotaskHeaders(),
         })
         return {
           content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
@@ -1200,13 +951,7 @@ export function registerTools(server: McpServer) {
         const baseUrl = `https://webservices15.autotask.net/ATServicesRest/V1.0/TicketNotes/${input.parentId}/Attachments`
         const data = await callApi(baseUrl, {
           method: 'GET',
-          headers: {
-            ApiIntegrationCode: 'string',
-            UserName: 'string',
-            Secret: 'string',
-            ImpersonationResourceId: 'string',
-            Accept: 'application/json',
-          },
+          headers: getAutotaskHeaders(),
         })
         return {
           content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
@@ -1229,14 +974,7 @@ export function registerTools(server: McpServer) {
         const baseUrl = `https://webservices15.autotask.net/ATServicesRest/V1.0/TicketNotes/${input.parentId}/Attachments`
         const data = await callApi(baseUrl, {
           method: 'POST',
-          headers: {
-            ApiIntegrationCode: 'string',
-            UserName: 'string',
-            Secret: 'string',
-            ImpersonationResourceId: 'string',
-            'Content-Type': 'application/json',
-            Accept: 'application/json',
-          },
+          headers: getAutotaskHeaders({ 'Content-Type': 'application/json' }),
           body: JSON.stringify(input.body),
         })
         return {
@@ -1260,13 +998,7 @@ export function registerTools(server: McpServer) {
         const baseUrl = `https://webservices15.autotask.net/ATServicesRest/V1.0/TicketNotes/query/count`
         const data = await callApi(baseUrl, {
           method: 'GET',
-          headers: {
-            ApiIntegrationCode: 'string',
-            UserName: 'string',
-            Secret: 'string',
-            ImpersonationResourceId: 'string',
-            Accept: 'application/json',
-          },
+          headers: getAutotaskHeaders(),
           params: { search: input.search },
         })
         return {
@@ -1290,14 +1022,7 @@ export function registerTools(server: McpServer) {
         const baseUrl = `https://webservices15.autotask.net/ATServicesRest/V1.0/TicketNotes/query/count`
         const data = await callApi(baseUrl, {
           method: 'POST',
-          headers: {
-            ApiIntegrationCode: 'string',
-            UserName: 'string',
-            Secret: 'string',
-            ImpersonationResourceId: 'string',
-            'Content-Type': 'application/json',
-            Accept: 'application/json',
-          },
+          headers: getAutotaskHeaders({ 'Content-Type': 'application/json' }),
           body: JSON.stringify(input.body),
         })
         return {
@@ -1321,13 +1046,7 @@ export function registerTools(server: McpServer) {
         const baseUrl = `https://webservices15.autotask.net/ATServicesRest/V1.0/TicketNotes/query`
         const data = await callApi(baseUrl, {
           method: 'GET',
-          headers: {
-            ApiIntegrationCode: 'string',
-            UserName: 'string',
-            Secret: 'string',
-            ImpersonationResourceId: 'string',
-            Accept: 'application/json',
-          },
+          headers: getAutotaskHeaders(),
           params: { search: input.search },
         })
         return {
@@ -1351,14 +1070,7 @@ export function registerTools(server: McpServer) {
         const baseUrl = `https://webservices15.autotask.net/ATServicesRest/V1.0/TicketNotes/query`
         const data = await callApi(baseUrl, {
           method: 'POST',
-          headers: {
-            ApiIntegrationCode: 'string',
-            UserName: 'string',
-            Secret: 'string',
-            ImpersonationResourceId: 'string',
-            'Content-Type': 'application/json',
-            Accept: 'application/json',
-          },
+          headers: getAutotaskHeaders({ 'Content-Type': 'application/json' }),
           body: JSON.stringify(input.body),
         })
         return {
@@ -1382,13 +1094,7 @@ export function registerTools(server: McpServer) {
         const baseUrl = `https://webservices15.autotask.net/ATServicesRest/V1.0/TicketNotes/${input.id}`
         const data = await callApi(baseUrl, {
           method: 'GET',
-          headers: {
-            ApiIntegrationCode: 'string',
-            UserName: 'string',
-            Secret: 'string',
-            ImpersonationResourceId: 'string',
-            Accept: 'application/json',
-          },
+          headers: getAutotaskHeaders(),
         })
         return {
           content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
@@ -1411,13 +1117,7 @@ export function registerTools(server: McpServer) {
         const baseUrl = `https://webservices15.autotask.net/ATServicesRest/V1.0/TicketNotes/entityInformation/fields`
         const data = await callApi(baseUrl, {
           method: 'GET',
-          headers: {
-            ApiIntegrationCode: 'string',
-            UserName: 'string',
-            Secret: 'string',
-            ImpersonationResourceId: 'string',
-            Accept: 'application/json',
-          },
+          headers: getAutotaskHeaders(),
         })
         return {
           content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
@@ -1440,13 +1140,7 @@ export function registerTools(server: McpServer) {
         const baseUrl = `https://webservices15.autotask.net/ATServicesRest/V1.0/TicketNotes/entityInformation/userDefinedFields`
         const data = await callApi(baseUrl, {
           method: 'GET',
-          headers: {
-            ApiIntegrationCode: 'string',
-            UserName: 'string',
-            Secret: 'string',
-            ImpersonationResourceId: 'string',
-            Accept: 'application/json',
-          },
+          headers: getAutotaskHeaders(),
         })
         return {
           content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
@@ -1469,13 +1163,7 @@ export function registerTools(server: McpServer) {
         const baseUrl = `https://webservices15.autotask.net/ATServicesRest/V1.0/TicketNotes/entityInformation`
         const data = await callApi(baseUrl, {
           method: 'GET',
-          headers: {
-            ApiIntegrationCode: 'string',
-            UserName: 'string',
-            Secret: 'string',
-            ImpersonationResourceId: 'string',
-            Accept: 'application/json',
-          },
+          headers: getAutotaskHeaders(),
         })
         return {
           content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
@@ -1498,13 +1186,7 @@ export function registerTools(server: McpServer) {
         const baseUrl = `https://webservices15.autotask.net/ATServicesRest/V1.0/Tickets/${input.parentId}/Notes/${input.id}`
         const data = await callApi(baseUrl, {
           method: 'GET',
-          headers: {
-            ApiIntegrationCode: 'string',
-            UserName: 'string',
-            Secret: 'string',
-            ImpersonationResourceId: 'string',
-            Accept: 'application/json',
-          },
+          headers: getAutotaskHeaders(),
         })
         return {
           content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
@@ -1527,13 +1209,7 @@ export function registerTools(server: McpServer) {
         const baseUrl = `https://webservices15.autotask.net/ATServicesRest/V1.0/Tickets/${input.parentId}/Notes/entityInformation/fields`
         const data = await callApi(baseUrl, {
           method: 'GET',
-          headers: {
-            ApiIntegrationCode: 'string',
-            UserName: 'string',
-            Secret: 'string',
-            ImpersonationResourceId: 'string',
-            Accept: 'application/json',
-          },
+          headers: getAutotaskHeaders(),
         })
         return {
           content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
@@ -1556,13 +1232,7 @@ export function registerTools(server: McpServer) {
         const baseUrl = `https://webservices15.autotask.net/ATServicesRest/V1.0/Tickets/${input.parentId}/Notes/entityInformation/userDefinedFields`
         const data = await callApi(baseUrl, {
           method: 'GET',
-          headers: {
-            ApiIntegrationCode: 'string',
-            UserName: 'string',
-            Secret: 'string',
-            ImpersonationResourceId: 'string',
-            Accept: 'application/json',
-          },
+          headers: getAutotaskHeaders(),
         })
         return {
           content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
@@ -1585,13 +1255,7 @@ export function registerTools(server: McpServer) {
         const baseUrl = `https://webservices15.autotask.net/ATServicesRest/V1.0/Tickets/${input.parentId}/Notes/entityInformation`
         const data = await callApi(baseUrl, {
           method: 'GET',
-          headers: {
-            ApiIntegrationCode: 'string',
-            UserName: 'string',
-            Secret: 'string',
-            ImpersonationResourceId: 'string',
-            Accept: 'application/json',
-          },
+          headers: getAutotaskHeaders(),
         })
         return {
           content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
@@ -1614,13 +1278,7 @@ export function registerTools(server: McpServer) {
         const baseUrl = `https://webservices15.autotask.net/ATServicesRest/V1.0/Tickets/${input.parentId}/Notes`
         const data = await callApi(baseUrl, {
           method: 'GET',
-          headers: {
-            ApiIntegrationCode: 'string',
-            UserName: 'string',
-            Secret: 'string',
-            ImpersonationResourceId: 'string',
-            Accept: 'application/json',
-          },
+          headers: getAutotaskHeaders(),
         })
         return {
           content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
@@ -1643,14 +1301,7 @@ export function registerTools(server: McpServer) {
         const baseUrl = `https://webservices15.autotask.net/ATServicesRest/V1.0/Tickets/${input.parentId}/Notes`
         const data = await callApi(baseUrl, {
           method: 'POST',
-          headers: {
-            ApiIntegrationCode: 'string',
-            UserName: 'string',
-            Secret: 'string',
-            ImpersonationResourceId: 'string',
-            'Content-Type': 'application/json',
-            Accept: 'application/json',
-          },
+          headers: getAutotaskHeaders({ 'Content-Type': 'application/json' }),
           body: JSON.stringify(input.body),
         })
         return {
@@ -1674,14 +1325,7 @@ export function registerTools(server: McpServer) {
         const baseUrl = `https://webservices15.autotask.net/ATServicesRest/V1.0/Tickets/${input.parentId}/Notes`
         const data = await callApi(baseUrl, {
           method: 'PUT',
-          headers: {
-            ApiIntegrationCode: 'string',
-            UserName: 'string',
-            Secret: 'string',
-            ImpersonationResourceId: 'string',
-            'Content-Type': 'application/json',
-            Accept: 'application/json',
-          },
+          headers: getAutotaskHeaders({ 'Content-Type': 'application/json' }),
           body: JSON.stringify(input.body),
         })
         return {
@@ -1705,14 +1349,7 @@ export function registerTools(server: McpServer) {
         const baseUrl = `https://webservices15.autotask.net/ATServicesRest/V1.0/Tickets/${input.parentId}/Notes`
         const data = await callApi(baseUrl, {
           method: 'PATCH',
-          headers: {
-            ApiIntegrationCode: 'string',
-            UserName: 'string',
-            Secret: 'string',
-            ImpersonationResourceId: 'string',
-            'Content-Type': 'application/json',
-            Accept: 'application/json',
-          },
+          headers: getAutotaskHeaders({ 'Content-Type': 'application/json' }),
           body: JSON.stringify(input.body),
         })
         return {
@@ -1736,13 +1373,7 @@ export function registerTools(server: McpServer) {
         const baseUrl = `https://webservices15.autotask.net/ATServicesRest/V1.0/Tickets/${input.parentId}/SecondaryResources/${input.id}`
         const data = await callApi(baseUrl, {
           method: 'GET',
-          headers: {
-            ApiIntegrationCode: 'string',
-            UserName: 'string',
-            Secret: 'string',
-            ImpersonationResourceId: 'string',
-            Accept: 'application/json',
-          },
+          headers: getAutotaskHeaders(),
         })
         return {
           content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
@@ -1765,13 +1396,7 @@ export function registerTools(server: McpServer) {
         const baseUrl = `https://webservices15.autotask.net/ATServicesRest/V1.0/Tickets/${input.parentId}/SecondaryResources/${input.id}`
         const data = await callApi(baseUrl, {
           method: 'DELETE',
-          headers: {
-            ApiIntegrationCode: 'string',
-            UserName: 'string',
-            Secret: 'string',
-            ImpersonationResourceId: 'string',
-            Accept: 'application/json',
-          },
+          headers: getAutotaskHeaders(),
         })
         return {
           content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
@@ -1794,13 +1419,7 @@ export function registerTools(server: McpServer) {
         const baseUrl = `https://webservices15.autotask.net/ATServicesRest/V1.0/Tickets/${input.parentId}/SecondaryResources/entityInformation/fields`
         const data = await callApi(baseUrl, {
           method: 'GET',
-          headers: {
-            ApiIntegrationCode: 'string',
-            UserName: 'string',
-            Secret: 'string',
-            ImpersonationResourceId: 'string',
-            Accept: 'application/json',
-          },
+          headers: getAutotaskHeaders(),
         })
         return {
           content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
@@ -1823,13 +1442,7 @@ export function registerTools(server: McpServer) {
         const baseUrl = `https://webservices15.autotask.net/ATServicesRest/V1.0/Tickets/${input.parentId}/SecondaryResources/entityInformation/userDefinedFields`
         const data = await callApi(baseUrl, {
           method: 'GET',
-          headers: {
-            ApiIntegrationCode: 'string',
-            UserName: 'string',
-            Secret: 'string',
-            ImpersonationResourceId: 'string',
-            Accept: 'application/json',
-          },
+          headers: getAutotaskHeaders(),
         })
         return {
           content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
@@ -1852,13 +1465,7 @@ export function registerTools(server: McpServer) {
         const baseUrl = `https://webservices15.autotask.net/ATServicesRest/V1.0/Tickets/${input.parentId}/SecondaryResources/entityInformation`
         const data = await callApi(baseUrl, {
           method: 'GET',
-          headers: {
-            ApiIntegrationCode: 'string',
-            UserName: 'string',
-            Secret: 'string',
-            ImpersonationResourceId: 'string',
-            Accept: 'application/json',
-          },
+          headers: getAutotaskHeaders(),
         })
         return {
           content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
@@ -1881,13 +1488,7 @@ export function registerTools(server: McpServer) {
         const baseUrl = `https://webservices15.autotask.net/ATServicesRest/V1.0/Tickets/${input.parentId}/SecondaryResources`
         const data = await callApi(baseUrl, {
           method: 'GET',
-          headers: {
-            ApiIntegrationCode: 'string',
-            UserName: 'string',
-            Secret: 'string',
-            ImpersonationResourceId: 'string',
-            Accept: 'application/json',
-          },
+          headers: getAutotaskHeaders(),
         })
         return {
           content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
@@ -1910,14 +1511,7 @@ export function registerTools(server: McpServer) {
         const baseUrl = `https://webservices15.autotask.net/ATServicesRest/V1.0/Tickets/${input.parentId}/SecondaryResources`
         const data = await callApi(baseUrl, {
           method: 'POST',
-          headers: {
-            ApiIntegrationCode: 'string',
-            UserName: 'string',
-            Secret: 'string',
-            ImpersonationResourceId: 'string',
-            'Content-Type': 'application/json',
-            Accept: 'application/json',
-          },
+          headers: getAutotaskHeaders({ 'Content-Type': 'application/json' }),
           body: JSON.stringify(input.body),
         })
         return {
@@ -1941,13 +1535,7 @@ export function registerTools(server: McpServer) {
         const baseUrl = `https://webservices15.autotask.net/ATServicesRest/V1.0/Tickets/query/count`
         const data = await callApi(baseUrl, {
           method: 'GET',
-          headers: {
-            ApiIntegrationCode: 'string',
-            UserName: 'string',
-            Secret: 'string',
-            ImpersonationResourceId: 'string',
-            Accept: 'application/json',
-          },
+          headers: getAutotaskHeaders(),
           params: { search: input.search },
         })
         return {
@@ -1971,14 +1559,7 @@ export function registerTools(server: McpServer) {
         const baseUrl = `https://webservices15.autotask.net/ATServicesRest/V1.0/Tickets/query/count`
         const data = await callApi(baseUrl, {
           method: 'POST',
-          headers: {
-            ApiIntegrationCode: 'string',
-            UserName: 'string',
-            Secret: 'string',
-            ImpersonationResourceId: 'string',
-            'Content-Type': 'application/json',
-            Accept: 'application/json',
-          },
+          headers: getAutotaskHeaders({ 'Content-Type': 'application/json' }),
           body: JSON.stringify(input.body),
         })
         return {
@@ -2002,13 +1583,7 @@ export function registerTools(server: McpServer) {
         const baseUrl = `https://webservices15.autotask.net/ATServicesRest/V1.0/Tickets/query`
         const data = await callApi(baseUrl, {
           method: 'GET',
-          headers: {
-            ApiIntegrationCode: 'string',
-            UserName: 'string',
-            Secret: 'string',
-            ImpersonationResourceId: 'string',
-            Accept: 'application/json',
-          },
+          headers: getAutotaskHeaders(),
           params: { search: input.search },
         })
         return {
@@ -2032,14 +1607,7 @@ export function registerTools(server: McpServer) {
         const baseUrl = `https://webservices15.autotask.net/ATServicesRest/V1.0/Tickets/query`
         const data = await callApi(baseUrl, {
           method: 'POST',
-          headers: {
-            ApiIntegrationCode: 'string',
-            UserName: 'string',
-            Secret: 'string',
-            ImpersonationResourceId: 'string',
-            'Content-Type': 'application/json',
-            Accept: 'application/json',
-          },
+          headers: getAutotaskHeaders({ 'Content-Type': 'application/json' }),
           body: JSON.stringify(input.body),
         })
         return {
@@ -2063,13 +1631,7 @@ export function registerTools(server: McpServer) {
         const baseUrl = `https://webservices15.autotask.net/ATServicesRest/V1.0/Tickets/${input.id}`
         const data = await callApi(baseUrl, {
           method: 'GET',
-          headers: {
-            ApiIntegrationCode: 'string',
-            UserName: 'string',
-            Secret: 'string',
-            ImpersonationResourceId: 'string',
-            Accept: 'application/json',
-          },
+          headers: getAutotaskHeaders(),
         })
         return {
           content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
@@ -2092,13 +1654,7 @@ export function registerTools(server: McpServer) {
         const baseUrl = `https://webservices15.autotask.net/ATServicesRest/V1.0/Tickets/entityInformation/fields`
         const data = await callApi(baseUrl, {
           method: 'GET',
-          headers: {
-            ApiIntegrationCode: 'string',
-            UserName: 'string',
-            Secret: 'string',
-            ImpersonationResourceId: 'string',
-            Accept: 'application/json',
-          },
+          headers: getAutotaskHeaders(),
         })
         return {
           content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
@@ -2121,13 +1677,7 @@ export function registerTools(server: McpServer) {
         const baseUrl = `https://webservices15.autotask.net/ATServicesRest/V1.0/Tickets/entityInformation/userDefinedFields`
         const data = await callApi(baseUrl, {
           method: 'GET',
-          headers: {
-            ApiIntegrationCode: 'string',
-            UserName: 'string',
-            Secret: 'string',
-            ImpersonationResourceId: 'string',
-            Accept: 'application/json',
-          },
+          headers: getAutotaskHeaders(),
         })
         return {
           content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
@@ -2150,13 +1700,7 @@ export function registerTools(server: McpServer) {
         const baseUrl = `https://webservices15.autotask.net/ATServicesRest/V1.0/Tickets/entityInformation`
         const data = await callApi(baseUrl, {
           method: 'GET',
-          headers: {
-            ApiIntegrationCode: 'string',
-            UserName: 'string',
-            Secret: 'string',
-            ImpersonationResourceId: 'string',
-            Accept: 'application/json',
-          },
+          headers: getAutotaskHeaders(),
         })
         return {
           content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
@@ -2179,14 +1723,7 @@ export function registerTools(server: McpServer) {
         const baseUrl = `https://webservices15.autotask.net/ATServicesRest/V1.0/Tickets`
         const data = await callApi(baseUrl, {
           method: 'POST',
-          headers: {
-            ApiIntegrationCode: 'string',
-            UserName: 'string',
-            Secret: 'string',
-            ImpersonationResourceId: 'string',
-            'Content-Type': 'application/json',
-            Accept: 'application/json',
-          },
+          headers: getAutotaskHeaders({ 'Content-Type': 'application/json' }),
           body: JSON.stringify(input.body),
         })
         return {
@@ -2210,14 +1747,7 @@ export function registerTools(server: McpServer) {
         const baseUrl = `https://webservices15.autotask.net/ATServicesRest/V1.0/Tickets`
         const data = await callApi(baseUrl, {
           method: 'PUT',
-          headers: {
-            ApiIntegrationCode: 'string',
-            UserName: 'string',
-            Secret: 'string',
-            ImpersonationResourceId: 'string',
-            'Content-Type': 'application/json',
-            Accept: 'application/json',
-          },
+          headers: getAutotaskHeaders({ 'Content-Type': 'application/json' }),
           body: JSON.stringify(input.body),
         })
         return {
@@ -2241,14 +1771,7 @@ export function registerTools(server: McpServer) {
         const baseUrl = `https://webservices15.autotask.net/ATServicesRest/V1.0/Tickets`
         const data = await callApi(baseUrl, {
           method: 'PATCH',
-          headers: {
-            ApiIntegrationCode: 'string',
-            UserName: 'string',
-            Secret: 'string',
-            ImpersonationResourceId: 'string',
-            'Content-Type': 'application/json',
-            Accept: 'application/json',
-          },
+          headers: getAutotaskHeaders({ 'Content-Type': 'application/json' }),
           body: JSON.stringify(input.body),
         })
         return {
@@ -2272,13 +1795,7 @@ export function registerTools(server: McpServer) {
         const baseUrl = `https://webservices15.autotask.net/ATServicesRest/V1.0/TicketSecondaryResources/query/count`
         const data = await callApi(baseUrl, {
           method: 'GET',
-          headers: {
-            ApiIntegrationCode: 'string',
-            UserName: 'string',
-            Secret: 'string',
-            ImpersonationResourceId: 'string',
-            Accept: 'application/json',
-          },
+          headers: getAutotaskHeaders(),
           params: { search: input.search },
         })
         return {
@@ -2302,14 +1819,7 @@ export function registerTools(server: McpServer) {
         const baseUrl = `https://webservices15.autotask.net/ATServicesRest/V1.0/TicketSecondaryResources/query/count`
         const data = await callApi(baseUrl, {
           method: 'POST',
-          headers: {
-            ApiIntegrationCode: 'string',
-            UserName: 'string',
-            Secret: 'string',
-            ImpersonationResourceId: 'string',
-            'Content-Type': 'application/json',
-            Accept: 'application/json',
-          },
+          headers: getAutotaskHeaders({ 'Content-Type': 'application/json' }),
           body: JSON.stringify(input.body),
         })
         return {
@@ -2333,13 +1843,7 @@ export function registerTools(server: McpServer) {
         const baseUrl = `https://webservices15.autotask.net/ATServicesRest/V1.0/TicketSecondaryResources/query`
         const data = await callApi(baseUrl, {
           method: 'GET',
-          headers: {
-            ApiIntegrationCode: 'string',
-            UserName: 'string',
-            Secret: 'string',
-            ImpersonationResourceId: 'string',
-            Accept: 'application/json',
-          },
+          headers: getAutotaskHeaders(),
           params: { search: input.search },
         })
         return {
@@ -2363,14 +1867,7 @@ export function registerTools(server: McpServer) {
         const baseUrl = `https://webservices15.autotask.net/ATServicesRest/V1.0/TicketSecondaryResources/query`
         const data = await callApi(baseUrl, {
           method: 'POST',
-          headers: {
-            ApiIntegrationCode: 'string',
-            UserName: 'string',
-            Secret: 'string',
-            ImpersonationResourceId: 'string',
-            'Content-Type': 'application/json',
-            Accept: 'application/json',
-          },
+          headers: getAutotaskHeaders({ 'Content-Type': 'application/json' }),
           body: JSON.stringify(input.body),
         })
         return {
@@ -2394,13 +1891,7 @@ export function registerTools(server: McpServer) {
         const baseUrl = `https://webservices15.autotask.net/ATServicesRest/V1.0/TicketSecondaryResources/${input.id}`
         const data = await callApi(baseUrl, {
           method: 'GET',
-          headers: {
-            ApiIntegrationCode: 'string',
-            UserName: 'string',
-            Secret: 'string',
-            ImpersonationResourceId: 'string',
-            Accept: 'application/json',
-          },
+          headers: getAutotaskHeaders(),
         })
         return {
           content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
@@ -2423,13 +1914,7 @@ export function registerTools(server: McpServer) {
         const baseUrl = `https://webservices15.autotask.net/ATServicesRest/V1.0/TicketSecondaryResources/entityInformation/fields`
         const data = await callApi(baseUrl, {
           method: 'GET',
-          headers: {
-            ApiIntegrationCode: 'string',
-            UserName: 'string',
-            Secret: 'string',
-            ImpersonationResourceId: 'string',
-            Accept: 'application/json',
-          },
+          headers: getAutotaskHeaders(),
         })
         return {
           content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
@@ -2452,13 +1937,7 @@ export function registerTools(server: McpServer) {
         const baseUrl = `https://webservices15.autotask.net/ATServicesRest/V1.0/TicketSecondaryResources/entityInformation/userDefinedFields`
         const data = await callApi(baseUrl, {
           method: 'GET',
-          headers: {
-            ApiIntegrationCode: 'string',
-            UserName: 'string',
-            Secret: 'string',
-            ImpersonationResourceId: 'string',
-            Accept: 'application/json',
-          },
+          headers: getAutotaskHeaders(),
         })
         return {
           content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
@@ -2481,13 +1960,7 @@ export function registerTools(server: McpServer) {
         const baseUrl = `https://webservices15.autotask.net/ATServicesRest/V1.0/TicketSecondaryResources/entityInformation`
         const data = await callApi(baseUrl, {
           method: 'GET',
-          headers: {
-            ApiIntegrationCode: 'string',
-            UserName: 'string',
-            Secret: 'string',
-            ImpersonationResourceId: 'string',
-            Accept: 'application/json',
-          },
+          headers: getAutotaskHeaders(),
         })
         return {
           content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
